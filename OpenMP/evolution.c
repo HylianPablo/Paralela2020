@@ -4,7 +4,7 @@
  * Computacion Paralela, Grado en Informatica (Universidad de Valladolid)
  * 2019/2020
  *
- * v1.0
+ * v1.1
  *
  * (c) 2020 Arturo Gonzalez Escribano
  */
@@ -229,29 +229,14 @@ int main(int argc, char *argv[]) {
 	food_level = atof( argv[6] );
 
 	/* 1.4. Read random sequences initializer */
-	for( i=0; i<3; i++ ) 
-		init_random_seq[i] = (unsigned short)atoi( argv[7+i] );
-
-	/* 1.5. Initialize random sequences for food dropping */
 	for( i=0; i<3; i++ ) {
-		food_random_seq[i] = (unsigned short)nrand48( init_random_seq );
-		food_spot_random_seq[i] = (unsigned short)nrand48( init_random_seq );
+		init_random_seq[i] = (unsigned short)atoi( argv[7+i] );
 	}
 
-	/* 1.6. Initial cells */
+	/* 1.5. Read number of cells */
 	num_cells = atoi( argv[10] );
-	cells = (Cell *)malloc( sizeof(Cell) * (size_t)num_cells );
-	if ( cells == NULL ) {
-		fprintf(stderr,"-- Error allocating: %d cells\n", num_cells );
-		exit( EXIT_FAILURE );
-	}
-	for( i=0; i<num_cells; i++ ) {
-		// Initialize the cell ramdom sequences
-		for( j=0; j<3; j++ ) 
-			cells[i].random_seq[j] = (unsigned short)nrand48( init_random_seq );
-	}
 
-	/* 1.7. Read special food spot */
+	/* 1.6. Read special food spot */
 	if (argc > 11 ) {
 		if ( argc < 17 ) {
 			fprintf(stderr, "-- Error in number of special-food-spot arguments in the command line\n\n");
@@ -280,15 +265,40 @@ int main(int argc, char *argv[]) {
 	/* 1.7. Print arguments */
 	printf("Arguments, Rows: %d, Columns: %d, max_iter: %d\n", rows, columns, max_iter);
 	printf("Arguments, Max.food: %f, Food density: %f, Food level: %f\n", max_food, food_density, food_level);
-	printf("Arguments, Init Random Sequence: %d,%d,%d\n", init_random_seq[0], init_random_seq[1], init_random_seq[2]);
+	printf("Arguments, Init Random Sequence: %hu,%hu,%hu\n", init_random_seq[0], init_random_seq[1], init_random_seq[2]);
 	if ( food_spot_active ) {
 		printf("Arguments, Food_spot, pos(%d,%d), size(%d,%d), Density: %f, Level: %f\n",
 			food_spot_row, food_spot_col, food_spot_size_rows, food_spot_size_cols, food_spot_density, food_spot_level );
 	}
 	printf("Initial cells: %d\n", num_cells );
+#endif // DEBUG
+
+
+	/* 1.8. Initialize random sequences for food dropping */
+	for( i=0; i<3; i++ ) {
+		food_random_seq[i] = (unsigned short)nrand48( init_random_seq );
+		food_spot_random_seq[i] = (unsigned short)nrand48( init_random_seq );
+	}
+
+	/* 1.9. Initialize random sequences of cells */
+	cells = (Cell *)malloc( sizeof(Cell) * (size_t)num_cells );
+	if ( cells == NULL ) {
+		fprintf(stderr,"-- Error allocating: %d cells\n", num_cells );
+		exit( EXIT_FAILURE );
+	}
+	for( i=0; i<num_cells; i++ ) {
+		// Initialize the cell ramdom sequences
+		for( j=0; j<3; j++ ) 
+			cells[i].random_seq[j] = (unsigned short)nrand48( init_random_seq );
+	}
+
+
+#ifdef DEBUG
+	/* 1.10. Print random seed of the initial cells */
 	/*
+	printf("Initial cells random seeds: %d\n", num_cells );
 	for( i=0; i<num_cells; i++ )
-		printf("\tCell %d, Random seq: %d,%d,%d\n", i, cells[i].random_seq[0], cells[i].random_seq[1], cells[i].random_seq[2] );
+		printf("\tCell %d, Random seq: %hu,%hu,%hu\n", i, cells[i].random_seq[0], cells[i].random_seq[1], cells[i].random_seq[2] );
 	*/
 #endif // DEBUG
 
