@@ -180,8 +180,8 @@ int main(int argc, char *argv[]) {
 	// Simulation data
 	int max_iter;			// Maximum number of simulation steps
 	int rows, columns;		// Cultivation area sizes
-	//float *culture;			// Cultivation area values
-	//short *culture_cells;		// Ancillary structure to count the number of cells in a culture space
+	float *culture;			// Cultivation area values
+	short *culture_cells;		// Ancillary structure to count the number of cells in a culture space
 
 	float max_food;			// Maximum level of food on any position
 	float food_density;		// Number of food sources introduced per step
@@ -314,18 +314,17 @@ int main(int argc, char *argv[]) {
  */
 
 	/* 3. Initialize culture surface and initial cells */
-	//culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
-	float culture[rows*columns];
-	//culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
-	short culture_cells[rows*columns];
+	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
+	//float culture[rows*columns];
+	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
+	//short culture_cells[rows*columns];
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
 	}
 	#pragma omp parallel for
 	for( i=0; i<rows*columns; i++ )
-		for( j=0; j<columns; j++ ) 
-			accessMat( culture, i, j ) = 0.0;
+			culture[i] = 0.0f;
 
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
@@ -377,22 +376,12 @@ int main(int argc, char *argv[]) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
 		int num_new_sources = (int)(rows * columns * food_density);
-
-        int rand_rows[num_new_sources];
-        int rand_cols[num_new_sources];
-        float rand_food[num_new_sources];
-        for (i=0; i<num_new_sources; i++) {
-            rand_rows[i] = (int) (rows * erand48( food_random_seq ));
-            rand_cols[i] = (int) (columns * erand48( food_random_seq ));
-            rand_food[i] = (float) (food_level * erand48( food_random_seq ));
-        }
-        #pragma omp parallel for 
-        for (i=0; i<num_new_sources; i++) {
-            int row = rand_rows[i];
-            int col = rand_cols[i];
-            float food = rand_food[i];
-            accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
-        }
+		for (i=0; i<num_new_sources; i++) {
+			int row = (int)(rows * erand48( food_random_seq ));
+			int col = (int)(columns * erand48( food_random_seq ));
+			float food = (float)( food_level * erand48( food_random_seq ));
+			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+		}
 		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
@@ -405,10 +394,10 @@ int main(int argc, char *argv[]) {
 		}
 
 		/* 4.2. Prepare ancillary data structures */
-		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ ) 
-				accessMat( culture_cells, i, j ) = 0.0f;
+		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */		
+		#pragma omp parallel for
+		for( i=0; i<rows*columns; i++ )
+				culture_cells[i] = 0.0f;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		//float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
 		float food_to_share[num_cells];
@@ -561,11 +550,11 @@ int main(int argc, char *argv[]) {
 
 		/* 4.8. Decrease non-harvested food */
 		current_max_food = 0.0f;
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ ) {
-				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
-				if ( accessMat( culture, i, j ) > current_max_food ) 
-					current_max_food = accessMat( culture, i, j );
+		#pragma omp parallel for reduction(max:current_max_food)
+		for( i=0; i<rows*columns; i++ ) {
+			culture[i] *= 0.95f; // Reduce 5%
+			if ( culture[i] > current_max_food ) 
+				current_max_food = culture[i];
 			}
 
 		/* 4.9. Statistics */
