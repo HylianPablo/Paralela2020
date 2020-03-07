@@ -180,8 +180,8 @@ int main(int argc, char *argv[]) {
 	// Simulation data
 	int max_iter;			// Maximum number of simulation steps
 	int rows, columns;		// Cultivation area sizes
-	float *culture;			// Cultivation area values
-	short *culture_cells;		// Ancillary structure to count the number of cells in a culture space
+	//float *culture;			// Cultivation area values
+	//short *culture_cells;		// Ancillary structure to count the number of cells in a culture space
 
 	float max_food;			// Maximum level of food on any position
 	float food_density;		// Number of food sources introduced per step
@@ -314,13 +314,16 @@ int main(int argc, char *argv[]) {
  */
 
 	/* 3. Initialize culture surface and initial cells */
-	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
-	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
+	//culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
+	float culture[rows*columns];
+	//culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
+	short culture_cells[rows*columns];
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
 	}
-	for( i=0; i<rows; i++ )
+	#pragma omp parallel for
+	for( i=0; i<rows*columns; i++ )
 		for( j=0; j<columns; j++ ) 
 			accessMat( culture, i, j ) = 0.0;
 
@@ -373,8 +376,7 @@ int main(int argc, char *argv[]) {
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		//printf("Valor erand: %lf\n",erand48(food_random_seq));
-		  int num_new_sources = (int)(rows * columns * food_density);
+		int num_new_sources = (int)(rows * columns * food_density);
 
         int rand_rows[num_new_sources];
         int rand_cols[num_new_sources];
@@ -408,7 +410,8 @@ int main(int argc, char *argv[]) {
 			for( j=0; j<columns; j++ ) 
 				accessMat( culture_cells, i, j ) = 0.0f;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
-		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
+		//float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
+		float food_to_share[num_cells];
 		if ( culture == NULL || culture_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
@@ -473,7 +476,8 @@ int main(int argc, char *argv[]) {
 		
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
-		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		//Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		Cell new_cells[num_cells];
 		if ( new_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
@@ -527,7 +531,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
-		free( food_to_share );
+		//free( food_to_share );
 
 		/* 4.6. Clean dead cells from the original list */
 		// 4.6.1. Move alive cells to the left to substitute dead cells
@@ -553,7 +557,7 @@ int main(int argc, char *argv[]) {
 				cells[ num_cells + j ] = new_cells[ j ];
 			num_cells += step_new_cells;
 		}
-		free( new_cells );
+		//free( new_cells );
 
 		/* 4.8. Decrease non-harvested food */
 		current_max_food = 0.0f;
@@ -629,9 +633,9 @@ int main(int argc, char *argv[]) {
 	);
 
 	/* 7. Free resources */	
-	free( culture );
-	free( culture_cells );
-	free( cells );
+	//free( culture );
+	//free( culture_cells );
+	//free( cells );
 
 	/* 8. End */
 	return 0;
