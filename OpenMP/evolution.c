@@ -375,7 +375,8 @@ int main(int argc, char *argv[]) {
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		int num_new_sources = (int)(rows * columns * food_density);
+		int num_new_sources = (int)(rows * columns * food_density);		
+		#pragma parallel for
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
@@ -555,7 +556,7 @@ int main(int argc, char *argv[]) {
 			culture[i] *= 0.95f; // Reduce 5%
 			if ( culture[i] > current_max_food ) 
 				current_max_food = culture[i];
-			}
+		}
 
 		/* 4.9. Statistics */
 		// Statistics: Max food
