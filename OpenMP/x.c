@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
 	//#pragma omp parallel for
 	//for( i=0; i<rows*columns; i++ )
 	//		culture[i] = 0.0f;
-	#pragma omp parallel //private(culture)
+	#pragma omp parallel
 	memset(culture,0.0f,sizeof(float)* (size_t)rows*(size_t)columns);
 
 	#pragma omp parallel for firstprivate(cells)
