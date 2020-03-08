@@ -15,6 +15,8 @@
 #include<float.h>
 #include<stdbool.h>
 #include<cputils.h>
+#include<omp.h>
+#include<time.h>
 
 /* Structure to store data of a cell */
 typedef struct {
@@ -313,15 +315,20 @@ int main(int argc, char *argv[]) {
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
+	//float culture[rows*columns];
 	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
+	//short culture_cells[rows*columns];
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
 	}
-	for( i=0; i<rows; i++ )
-		for( j=0; j<columns; j++ ) 
-			accessMat( culture, i, j ) = 0.0;
+	//#pragma omp parallel for
+	//for( i=0; i<rows*columns; i++ )
+	//		culture[i] = 0.0f;
+	#pragma omp parallel private(culture)
+	memset(culture,0.0f,sizeof(float)* (size_t)rows*(size_t)columns);
 
+	#pragma omp parallel for firstprivate(cells)
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20 
@@ -371,7 +378,8 @@ int main(int argc, char *argv[]) {
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		int num_new_sources = (int)(rows * columns * food_density);
+		int num_new_sources = (int)(rows * columns * food_density);		
+		//#pragma omp parallel for
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
@@ -381,25 +389,32 @@ int main(int argc, char *argv[]) {
 		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
+			//#pragma omp parallel for private(culture)
 			for (i=0; i<num_new_sources; i++) {
 				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
 				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
 				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
+				//#pragma omp parallel private(culture)
 				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			}
 		}
 
 		/* 4.2. Prepare ancillary data structures */
-		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ ) 
-				accessMat( culture_cells, i, j ) = 0.0f;
+		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */		
+		//#pragma omp parallel 
+			//for( i=0; i<rows; i++ )
+			//#pragma omp parallel for 
+			//for(j=0;j<columns;j++)
+				memset(culture_cells,0.0f,sizeof(short)* (size_t)rows*(size_t)columns);
+				//culture_cells[i*columns+j] = 0.0f;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
-		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
+		//float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
+		float food_to_share[num_cells];
 		if ( culture == NULL || culture_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
 		}
+
 
 		/* 4.3. Cell movements */
 		for (i=0; i<num_cells; i++) {
@@ -459,7 +474,8 @@ int main(int argc, char *argv[]) {
 		
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
-		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		//Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		Cell new_cells[num_cells];
 		if ( new_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
@@ -535,6 +551,7 @@ int main(int argc, char *argv[]) {
 		/* 4.7. Join cell lists: Old and new cells list */
 		if ( step_new_cells > 0 ) {
 			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
+			#pragma omp parallel for firstprivate(step_new_cells)
 			for (j=0; j<step_new_cells; j++)
 				cells[ num_cells + j ] = new_cells[ j ];
 			num_cells += step_new_cells;
@@ -543,12 +560,12 @@ int main(int argc, char *argv[]) {
 
 		/* 4.8. Decrease non-harvested food */
 		current_max_food = 0.0f;
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ ) {
-				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
-				if ( accessMat( culture, i, j ) > current_max_food ) 
-					current_max_food = accessMat( culture, i, j );
-			}
+		#pragma omp parallel for reduction(max:current_max_food)
+		for( i=0; i<rows*columns; i++ ) {
+			culture[i] *= 0.95f; // Reduce 5%
+			if ( culture[i] > current_max_food ) 
+				current_max_food = culture[i];
+		}
 
 		/* 4.9. Statistics */
 		// Statistics: Max food
