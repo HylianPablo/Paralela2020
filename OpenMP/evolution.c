@@ -376,7 +376,7 @@ int main(int argc, char *argv[]) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
 		int num_new_sources = (int)(rows * columns * food_density);		
-		#pragma parallel for
+		//#pragma omp parallel for
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
@@ -397,9 +397,11 @@ int main(int argc, char *argv[]) {
 
 		/* 4.2. Prepare ancillary data structures */
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */		
-		#pragma omp parallel for
-		for( i=0; i<rows*columns; i++ )
-				culture_cells[i] = 0.0f;
+		#pragma omp parallel for 
+			for( i=0; i<rows; i++ )
+			#pragma omp parallel for 
+			for(j=0;j<columns;j++)
+				culture_cells[i*columns+j] = 0.0f;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		//float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
 		float food_to_share[num_cells];
