@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
 	//#pragma omp parallel for
 	//for( i=0; i<rows*columns; i++ )
 	//		culture[i] = 0.0f;
-	#pragma omp parallel private(culture)
+	#pragma omp parallel //private(culture)
 	memset(culture,0.0f,sizeof(float)* (size_t)rows*(size_t)columns);
 
 	#pragma omp parallel for firstprivate(cells)
@@ -408,8 +408,8 @@ int main(int argc, char *argv[]) {
 				memset(culture_cells,0.0f,sizeof(short)* (size_t)rows*(size_t)columns);
 				//culture_cells[i*columns+j] = 0.0f;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
-		//float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
-		float food_to_share[num_cells];
+		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
+		//float food_to_share[num_cells];
 		if ( culture == NULL || culture_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
@@ -474,8 +474,8 @@ int main(int argc, char *argv[]) {
 		
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
-		//Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
-		Cell new_cells[num_cells];
+		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		//Cell new_cells[num_cells];
 		if ( new_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
@@ -556,6 +556,7 @@ int main(int argc, char *argv[]) {
 				cells[ num_cells + j ] = new_cells[ j ];
 			num_cells += step_new_cells;
 		}
+		
 		free( new_cells );
 
 		/* 4.8. Decrease non-harvested food */
