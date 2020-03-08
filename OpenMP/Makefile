@@ -12,6 +12,9 @@ debug: evolution.c
 clean:
 	rm -f evolution debug
 
-safe:	original.c
+safe: original.c
 	gcc $(CFLAGS) $< -o evolution $(LIBS)
+
+safe-debug: original.c
+	gcc $(CFLAGS_DEBUG) -DDEBUG $< -o debug $(LIBS)
 

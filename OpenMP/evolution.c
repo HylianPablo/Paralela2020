@@ -386,6 +386,7 @@ int main(int argc, char *argv[]) {
 		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
+			#pragma parallel for
 			for (i=0; i<num_new_sources; i++) {
 				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
 				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
