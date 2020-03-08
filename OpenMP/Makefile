@@ -1,5 +1,5 @@
 
-CFLAGS= -I. -O3 -fopenmp
+CFLAGS= -I. -O3 -fopenmp -Wall -Werror
 CFLAGS_DEBUG= -I. -g -O0
 LIBS=-lm
 
