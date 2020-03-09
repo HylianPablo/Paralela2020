@@ -371,49 +371,59 @@ int main(int argc, char *argv[]) {
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
 	int iter;
+
+	int num_new_sources = (int)(rows * columns * food_density);		
+	int num_new_sources_spot = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
+	//float dummy[3][num_new_sources];
+
 	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
 		int step_new_cells = 0;
 		int step_dead_cells = 0;
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		int num_new_sources = (int)(rows * columns * food_density);		
-		//#pragma omp parallel for firstprivate(culture) lastprivate(culture)
-		float dummy[3][num_new_sources];
+		//#pragma omp parallel for //firstprivate(culture) lastprivate(culture)
 		for (i=0; i<num_new_sources; i++) {
-			//int row = (int)(rows * erand48( food_random_seq ));
-			//int col = (int)(columns * erand48( food_random_seq ));
-			//float food = (float)( food_level * erand48( food_random_seq ));
-			//culture[row*columns+col]+=food;
-			dummy[0][i] = (int)(rows * erand48( food_random_seq ));
-			dummy[1][i] = (int)(columns * erand48( food_random_seq ));
-			dummy[2][i] = (float)( food_level * erand48( food_random_seq ));
+			int row = (int)(rows * erand48( food_random_seq ));
+			int col = (int)(columns * erand48( food_random_seq ));
+			float food = (float)( food_level * erand48( food_random_seq ));
+			culture[row*columns+col]+=food;
+			//dummy[0][i] = (float)erand48( food_random_seq );
+			//dummy[1][i] = (float)erand48( food_random_seq );
+			//dummy[2][i] = (float)erand48( food_random_seq );
 		}
-		#pragma omp parallel for //firstprivate(dummy,culture) lastprivate(culture,dummy)
-		for (i=0; i<num_new_sources; i++) 
+		/*#pragma omp parallel for//firstprivate(dummy,culture) lastprivate(culture,dummy)
+		for (i=0; i<num_new_sources; i++){ 
 			//accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			//culture[(int)(dummy[0][i]*columns+dummy[1][i])]+=dummy[2][i];
-			accessMat( culture, dummy[0][i], dummy[1][i] ) = accessMat( culture, dummy[0][i], dummy[1][i] ) + dummy[2][i];
+			dummy[0][i] *= rows;
+			dummy[1][i] *= columns;
+			dummy[2][i] *= food_level;
+			accessMat( culture, dummy[0][i], dummy[1][i] ) += dummy[2][i];
+		}*/
 
 		// In the special food spot
 		if ( food_spot_active ) {
-			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
 			//float dummy2[3][num_new_sources];
 			//#pragma omp parallel for firstprivate(culture) lastprivate(culture)
-			for (i=0; i<num_new_sources; i++) {
+			for (i=0; i<num_new_sources_spot; i++) {
 				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
 				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
 				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
 				culture[row*columns+col]+=food;
-				//dummy2[0][i] = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
-				//dummy2[1][i] = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
-				//dummy2[2][i] = (float)( food_spot_level * erand48( food_spot_random_seq ));
+				//dummy[0][i] = erand48( food_spot_random_seq );
+				//dummy[1][i] = erand48( food_spot_random_seq );
+				//dummy[2][i] = erand48( food_spot_random_seq );
 			}
-			//#pragma omp parallel for firstprivate(dummy2,culture) lastprivate(dummy2,culture)
-			//for (i=0; i<num_new_sources; i++) 
+			/*#pragma omp parallel for //firstprivate(dummy2,culture) lastprivate(dummy2,culture)
+			for (i=0; i<num_new_sources_spot; i++){ 
 				//culture[(int)(dummy2[0][i]*columns+dummy2[1][i])]+=dummy2[2][i];
-				//accessMat( culture, dummy[0][i], dummy[1][i] ) = accessMat( culture, dummy[0][i], dummy[1][i] ) + dummy[2][i];
+				dummy[0][i] = (int)(dummy[0][i] * food_spot_size_rows) + food_spot_row;
+				dummy[1][i] = (int)(dummy[1][i] * food_spot_size_cols) + food_spot_col;
+				dummy[2][i] = (float)(dummy[2][i] * food_spot_level);
+				accessMat( culture, dummy[0][i], dummy[1][i] ) +=  dummy[2][i];
 				//accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+			}*/
 		}
 
 		/* 4.2. Prepare ancillary data structures */
@@ -435,7 +445,7 @@ int main(int argc, char *argv[]) {
 
 
 		/* 4.3. Cell movements */
-		for (i=0; i<num_cells; i++) {
+for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
 				// Statistics: Max age of a cell in the simulation history
@@ -564,26 +574,34 @@ int main(int argc, char *argv[]) {
 		}
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
 		num_cells = alive_in_main_list;
-		cells = (Cell *)realloc( cells, sizeof(Cell) * num_cells );
+		cells = (Cell *)realloc( cells, sizeof(Cell) *  ( num_cells + step_new_cells ) );
+
+		current_max_food = 0.0f;
+		#pragma omp parallel
+		{
+		#pragma omp sections
+		{
 
 		/* 4.7. Join cell lists: Old and new cells list */
+		#pragma omp section		
 		if ( step_new_cells > 0 ) {
-			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
 			#pragma omp parallel for firstprivate(step_new_cells)
 			for (j=0; j<step_new_cells; j++)
 				cells[ num_cells + j ] = new_cells[ j ];
 			num_cells += step_new_cells;
 		}
-		free( new_cells );
 
 		/* 4.8. Decrease non-harvested food */
-		current_max_food = 0.0f;
+		#pragma omp section
 		#pragma omp parallel for reduction(max:current_max_food)
-		for( i=0; i<rows*columns; i++ ) {
+		for( i=0; i<rows*columns; i++ ){
 			culture[i] *= 0.95f; // Reduce 5%
 			if ( culture[i] > current_max_food ) 
 				current_max_food = culture[i];
 		}
+		}
+		}
+		free( new_cells );
 
 		/* 4.9. Statistics */
 		// Statistics: Max food
