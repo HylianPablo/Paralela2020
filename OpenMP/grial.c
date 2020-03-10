@@ -379,7 +379,6 @@ int main(int argc, char *argv[]) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
 		int num_new_sources = (int)(rows * columns * food_density);		
-		//#pragma omp parallel for
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
@@ -417,6 +416,7 @@ int main(int argc, char *argv[]) {
 
 
 		/* 4.3. Cell movements */
+		#pragma omp parallel for private(i)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
@@ -558,11 +558,14 @@ int main(int argc, char *argv[]) {
 		}
 		free( new_cells );
 
+		float* p = culture;
+
 		/* 4.8. Decrease non-harvested food */
 		current_max_food = 0.0f;
 		#pragma omp parallel for reduction(max:current_max_food)
 		for( i=0; i<rows*columns; i++ ) {
-			culture[i] *= 0.95f; // Reduce 5%
+			//culture[i] *= 0.95f; // Reduce 5%
+			*(p+i*sizeof(float))*=0.95f;
 			if ( culture[i] > current_max_food ) 
 				current_max_food = culture[i];
 		}
