@@ -382,7 +382,7 @@ int main(int argc, char *argv[]) {
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		//#pragma omp parallel for //firstprivate(culture) lastprivate(culture)
+		#pragma omp parallel for //firstprivate(culture) lastprivate(culture)
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
