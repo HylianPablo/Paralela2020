@@ -4,7 +4,7 @@
  * Computacion Paralela, Grado en Informatica (Universidad de Valladolid)
  * 2019/2020
  *
- * v1.1
+ * v1.2
  *
  * (c) 2020 Arturo Gonzalez Escribano
  */
@@ -175,7 +175,7 @@ void show_usage( char *program_name ) {
  * MAIN PROGRAM
  */
 int main(int argc, char *argv[]) {
-	int i,j,t;
+	int i,j;
 
 	// Simulation data
 	int max_iter;			// Maximum number of simulation steps
@@ -188,12 +188,12 @@ int main(int argc, char *argv[]) {
 	float food_level;		// Maximum number of food level in a new source
 
 	bool food_spot_active = false;	// Special food spot: Active
-	int food_spot_row;		// Special food spot: Initial row
-	int food_spot_col;		// Special food spot: Initial row
-	int food_spot_size_rows;	// Special food spot: Rows size
-	int food_spot_size_cols;	// Special food spot: Cols size
-	float food_spot_density;	// Special food spot: Food density
-	float food_spot_level;		// Special food spot: Food level
+	int food_spot_row = 0;		// Special food spot: Initial row
+	int food_spot_col = 0;		// Special food spot: Initial row
+	int food_spot_size_rows = 0;	// Special food spot: Rows size
+	int food_spot_size_cols = 0;	// Special food spot: Cols size
+	float food_spot_density = 0.0f;	// Special food spot: Food density
+	float food_spot_level = 0.0f;	// Special food spot: Food level
 
 	unsigned short init_random_seq[3];	// Status of the init random sequence
 	unsigned short food_random_seq[3];	// Status of the food random sequence
@@ -312,13 +312,23 @@ int main(int argc, char *argv[]) {
  * START HERE: DO NOT CHANGE THE CODE ABOVE THIS POINT
  *
  */
+
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
+	//float culture[rows*columns];
 	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
-	for( i=0; i<rows; i++ )
-		for( j=0; j<columns; j++ ) 
-			accessMat( culture, i, j ) = 0.0;
+	//short culture_cells[rows*columns];
+	if ( culture == NULL || culture_cells == NULL ) {
+		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
+		exit( EXIT_FAILURE );
+	}
+	//#pragma omp parallel for
+	//for( i=0; i<rows*columns; i++ )
+	//		culture[i] = 0.0f;
+	#pragma omp parallel
+	memset(culture,0.0f,sizeof(float)* (size_t)rows*(size_t)columns);
 
+	#pragma omp parallel for firstprivate(cells)
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20 
@@ -358,8 +368,6 @@ int main(int argc, char *argv[]) {
 	}
 #endif // DEBUG
 
-	clock_t section41Start = clock();
-
 	/* 4. Simulation */
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
@@ -370,7 +378,8 @@ int main(int argc, char *argv[]) {
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		int num_new_sources = (int)(rows * columns * food_density);
+		int num_new_sources = (int)(rows * columns * food_density);		
+		//#pragma omp parallel for
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
@@ -380,22 +389,36 @@ int main(int argc, char *argv[]) {
 		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
+<<<<<<< HEAD:OpenMP/evolution.c
+			#pragma parallel for
+=======
+			//#pragma omp parallel for private(culture)
+>>>>>>> Pablo:OpenMP/grial.c
 			for (i=0; i<num_new_sources; i++) {
 				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
 				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
 				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
+				//#pragma omp parallel private(culture)
 				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			}
 		}
 
-		clock_t section42Start = clock();
+		/* 4.2. Prepare ancillary data structures */
+		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */		
+		//#pragma omp parallel 
+			//for( i=0; i<rows; i++ )
+			//#pragma omp parallel for 
+			//for(j=0;j<columns;j++)
+				memset(culture_cells,0.0f,sizeof(short)* (size_t)rows*(size_t)columns);
+				//culture_cells[i*columns+j] = 0.0f;
+ 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
+		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
+		//float food_to_share[num_cells];
+		if ( culture == NULL || culture_cells == NULL ) {
+			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
+			exit( EXIT_FAILURE );
+		}
 
-		/* 4.2. Clear ancillary structure of the culture to account alive cells in a position after movement */
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ ) 
-				accessMat( culture_cells, i, j ) = 0.0f;
-
-		clock_t section43Start = clock();
 
 		/* 4.3. Cell movements */
 		for (i=0; i<num_cells; i++) {
@@ -440,30 +463,34 @@ int main(int argc, char *argv[]) {
 					cells[i].pos_row += cells[i].mov_row;
 					cells[i].pos_col += cells[i].mov_col;
 					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
-					if ( cells[i].pos_row >= rows ) cells[i].pos_row -= rows;
 					if ( cells[i].pos_row < 0 ) cells[i].pos_row += rows;
-					if ( cells[i].pos_col >= columns ) cells[i].pos_col -= columns;
+					if ( cells[i].pos_row >= rows ) cells[i].pos_row -= rows;
 					if ( cells[i].pos_col < 0 ) cells[i].pos_col += columns;
+					if ( cells[i].pos_col >= columns ) cells[i].pos_col -= columns;
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
 				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) += 1;
+				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
 			}
 		} // End cell movements
 		
-		clock_t section44Start = clock();
-
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		//Cell new_cells[num_cells];
+		if ( new_cells == NULL ) {
+			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
+			exit( EXIT_FAILURE );
+		}
+
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
-				float food = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
+				float food = food_to_share[i];
 				short count = accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col );
 				float my_food = food / count;
-				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) -= my_food;
-				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) --;
 				cells[i].storage += my_food;
 
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
@@ -498,10 +525,18 @@ int main(int argc, char *argv[]) {
 			}
 		} // End cell actions
 
-		clock_t section45Start = clock();
+		/* 4.5. Clean ancillary data structures */
+		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
+		for (i=0; i<num_cells; i++) {
+			if ( cells[i].alive ) {
+				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
+			}
+		}
+		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
+		free( food_to_share );
 
-		/* 4.5. Clean dead cells from the original list */
-		// 4.5.1. Move alive cells to the left to substitute dead cells
+		/* 4.6. Clean dead cells from the original list */
+		// 4.6.1. Move alive cells to the left to substitute dead cells
 		int free_position = 0;
 		int alive_in_main_list = 0;
 		for( i=0; i<num_cells; i++ ) {
@@ -513,35 +548,30 @@ int main(int argc, char *argv[]) {
 				free_position ++;
 			}
 		}
-		// 4.5.2. Reduce the storage space of the list to the current number of cells
+		// 4.6.2. Reduce the storage space of the list to the current number of cells
 		num_cells = alive_in_main_list;
 		cells = (Cell *)realloc( cells, sizeof(Cell) * num_cells );
 
-		clock_t section46Start = clock();
-
-		/* 4.6. Join cell lists: Old and new cells list */
+		/* 4.7. Join cell lists: Old and new cells list */
 		if ( step_new_cells > 0 ) {
 			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
+			#pragma omp parallel for firstprivate(step_new_cells)
 			for (j=0; j<step_new_cells; j++)
 				cells[ num_cells + j ] = new_cells[ j ];
 			num_cells += step_new_cells;
 		}
 		free( new_cells );
 
-		clock_t section47Start = clock();
-
-		/* 4.7. Decrease non-harvested food */
+		/* 4.8. Decrease non-harvested food */
 		current_max_food = 0.0f;
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ ) {
-				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
-				if ( accessMat( culture, i, j ) > current_max_food ) 
-					current_max_food = accessMat( culture, i, j );
-			}
+		#pragma omp parallel for reduction(max:current_max_food)
+		for( i=0; i<rows*columns; i++ ) {
+			culture[i] *= 0.95f; // Reduce 5%
+			if ( culture[i] > current_max_food ) 
+				current_max_food = culture[i];
+		}
 
-		clock_t section48Start = clock();
-
-		/* 4.8. Statistics */
+		/* 4.9. Statistics */
 		// Statistics: Max food
 		if ( current_max_food > sim_stat.history_max_food ) sim_stat.history_max_food = current_max_food;
 		// Statistics: Max new cells per step
@@ -554,22 +584,12 @@ int main(int argc, char *argv[]) {
 
 
 #ifdef DEBUG
-		/* 4.9. DEBUG: Print the current state of the simulation at the end of each iteration */
+		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
 		print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
-	clock_t section4End = clock();
-
-	printf("Tiempo 4.1: %ld\n",(section42Start-section41Start));
-	printf("Tiempo 4.2: %ld\n",(section43Start-section42Start));
-	printf("Tiempo 4.3: %ld\n",(section44Start-section43Start));
-	printf("Tiempo 4.4: %ld\n",(section45Start-section44Start));
-	printf("Tiempo 4.5: %ld\n",(section46Start-section45Start));
-	printf("Tiempo 4.6: %ld\n",(section47Start-section46Start));
-	printf("Tiempo 4.7: %ld\n",(section48Start-section47Start));
-	printf("Tiempo 4.8: %ld\n",section4End-section48Start);
 	}
 
-
+	
 /*
  *
  * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
@@ -604,7 +624,7 @@ int main(int argc, char *argv[]) {
 
 	/* 6.2. Results: Number of iterations and other statistics */
 	printf("Result: %d, ", iter);
-	printf("%d, %d, %d, %d, %d, %d, %d, %f", 
+	printf("%d, %d, %d, %d, %d, %d, %d, %f\n", 
 		num_cells_alive, 
 		sim_stat.history_total_cells, 
 		sim_stat.history_dead_cells, 
