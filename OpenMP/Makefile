@@ -1,5 +1,4 @@
-
-CFLAGS= -I. -O3 -fopenmp
+CFLAGS= -I. -O3 -fopenmp -Wall -Werror -W
 CFLAGS_DEBUG= -I. -g -O0
 LIBS=-lm
 
@@ -15,11 +14,8 @@ clean:
 safe: original.c
 	gcc $(CFLAGS) $< -o evolution $(LIBS)
 
-<<<<<<< HEAD
 safe-debug: original.c
 	gcc $(CFLAGS_DEBUG) -DDEBUG $< -o debug $(LIBS)
 
-=======
 pablo:	x.c
 	gcc $(CFLAGS) $< $(LIBS)
->>>>>>> Pablo

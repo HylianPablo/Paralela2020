@@ -590,11 +590,6 @@ for (i=0; i<num_cells; i++) {
 				cells[ num_cells + j ] = new_cells[ j ];
 			num_cells += step_new_cells;
 		}
-<<<<<<< HEAD
-		
-		free( new_cells );
-=======
->>>>>>> Pablo
 
 		/* 4.8. Decrease non-harvested food */
 		#pragma omp section
