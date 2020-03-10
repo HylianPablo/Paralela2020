@@ -10,8 +10,10 @@ debug: evolution.c
 	gcc $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
 
 clean:
-	rm -f evolution debug
+	rm -f evolution debug a.out
 
 safe:	original.c
 	gcc $(CFLAGS) $< -o evolution $(LIBS)
 
+pablo:	x.c
+	gcc $(CFLAGS) $< $(LIBS)
