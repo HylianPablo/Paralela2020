@@ -16,7 +16,6 @@
 #include <stdbool.h>
 #include <cputils.h>
 #include <omp.h>
-#include <time.h>
 
 /* Structure to store data of a cell */
 typedef struct
@@ -340,18 +339,21 @@ int main(int argc, char *argv[])
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc(sizeof(float) * (size_t)rows * (size_t)columns);
-	//float culture[rows*columns];
 	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
-	//short culture_cells[rows*columns];
 	if (culture == NULL || culture_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
 		exit(EXIT_FAILURE);
 	}
-#pragma omp parallel
-	memset(culture, 0.0f, sizeof(float) * (size_t)rows * (size_t)columns);
+#pragma omp parallel for default(none) \
+	shared(rows, columns, culture) \
+	schedule(guided)
+	for (i = 0; i < rows*columns; i++)
+		culture[i] = 0.0f;
+	//memset(culture, 0.0f, sizeof(float) * (size_t)rows * (size_t)columns);
 
-#pragma omp parallel for default(shared)
+#pragma omp parallel for default(shared) \
+	schedule(guided)
 	for (i = 0; i < num_cells; i++)
 	{
 		cells[i].alive = true;
@@ -424,7 +426,6 @@ int main(int argc, char *argv[])
 			row = (int)(dummy[i][0] * rows);
 			col = (int)(dummy[i][1] * columns);
 			food = (float)(dummy[i][2] * food_level);
-#pragma omp atomic
 			accessMat(culture, row, col) += (float)food;
 		}
 
@@ -455,11 +456,14 @@ int main(int argc, char *argv[])
 
 /* 4.2. Prepare ancillary data structures */
 /* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-#pragma omp parallel default(shared)
-		memset(culture_cells, 0.0f, sizeof(short) * (size_t)rows * (size_t)columns);
+#pragma omp parallel for default(none) \
+	shared(rows, columns, culture_cells) \
+	schedule(static)
+		for (i = 0; i < rows*columns; i++)
+			culture_cells[i] = 0;
+		//memset(culture_cells, 0.0f, sizeof(short) * (size_t)rows * (size_t)columns);
 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
-		//float food_to_share[num_cells];
 		if (culture == NULL || culture_cells == NULL)
 		{
 			fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
@@ -467,26 +471,28 @@ int main(int argc, char *argv[])
 		}
 
 		/* 4.3. Cell movements */
-		//#pragma omp parallel for default(shared) firstprivate (num_cells_alive, step_dead_cells) lastprivate(num_cells_alive, step_dead_cells)
+		int max_age = sim_stat.history_max_age;
+		#pragma omp parallel for default(shared) \
+		reduction(max:max_age) reduction(+:step_dead_cells) \
+		schedule(static)
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
 			{
 				cells[i].age++;
 				// Statistics: Max age of a cell in the simulation history
-				if (cells[i].age > sim_stat.history_max_age)
-					sim_stat.history_max_age = cells[i].age;
+				if (cells[i].age > max_age)
+					max_age = cells[i].age;
 
 				/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
 				if (cells[i].storage < 0.1f)
 				{
 					// Cell has died
 					cells[i].alive = false;
-					num_cells_alive--;
 					step_dead_cells++;
 					continue;
 				}
-				if (cells[i].storage < 1.0f)
+				else if (cells[i].storage < 1.0f)
 				{
 					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
 					cells[i].storage -= 0.2f;
@@ -520,31 +526,34 @@ int main(int argc, char *argv[])
 					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
 					if (cells[i].pos_row < 0)
 						cells[i].pos_row += rows;
-					if (cells[i].pos_row >= rows)
+					else if (cells[i].pos_row >= rows)
 						cells[i].pos_row -= rows;
 					if (cells[i].pos_col < 0)
 						cells[i].pos_col += columns;
-					if (cells[i].pos_col >= columns)
+					else if (cells[i].pos_col >= columns)
 						cells[i].pos_col -= columns;
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
+				#pragma omp atomic
 				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 				food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
 			}
 		} // End cell movements
+		sim_stat.history_max_age = max_age;
 
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
-		//Cell new_cells[num_cells];
 		if (new_cells == NULL)
 		{
 			fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
 			exit(EXIT_FAILURE);
 		}
 
+		#pragma omp parallel for default(shared) \
+		schedule(static)
 		for (i = 0; i < num_cells; i++)	
 		{
 			if (cells[i].alive)
@@ -556,11 +565,10 @@ int main(int argc, char *argv[])
 				cells[i].storage += my_food;
 
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
-				if (cells[i].age > 30 && cells[i].storage > 20)
+				if (cells[i].age > 30.0f && cells[i].storage > 20.0f)
 				{
 					// Split: Create new cell
-					num_cells_alive++;
-					sim_stat.history_total_cells++;
+					#pragma omp atomic
 					step_new_cells++;
 
 					// New cell is a copy of parent cell
@@ -587,9 +595,14 @@ int main(int argc, char *argv[])
 				}
 			}
 		} // End cell actions
+		sim_stat.history_total_cells += step_new_cells;
+		num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells;
 
 		/* 4.5. Clean ancillary data structures */
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
+		#pragma omp parallel for default(none) \
+		shared(num_cells, culture, cells, columns) \
+		schedule(static)
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
@@ -630,7 +643,9 @@ int main(int argc, char *argv[])
 #pragma omp section
 				if (step_new_cells > 0)
 				{
-#pragma omp parallel for firstprivate(step_new_cells)
+#pragma omp parallel for default(none) \
+	shared(step_new_cells, cells, new_cells, num_cells) \
+	schedule(static)
 					for (j = 0; j < step_new_cells; j++)
 						cells[num_cells + j] = new_cells[j];
 					num_cells += step_new_cells;
@@ -638,8 +653,10 @@ int main(int argc, char *argv[])
 
 /* 4.8. Decrease non-harvested food */
 #pragma omp section
-#pragma omp parallel for schedule(dynamic) reduction(max \
-								   : current_max_food)
+#pragma omp parallel for default(none) \
+	shared(rows, columns, culture) \
+	schedule(guided) \
+	reduction(max:current_max_food)
 				for (i = 0; i < rows * columns; i++)
 				{
 					culture[i] *= 0.95f; // Reduce 5%
