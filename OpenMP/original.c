@@ -445,9 +445,9 @@ int main(int argc, char *argv[]) {
 					cells[i].pos_col += cells[i].mov_col;
 					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
 					if ( cells[i].pos_row < 0 ) cells[i].pos_row += rows;
-					if ( cells[i].pos_row >= rows ) cells[i].pos_row -= rows;
+					else if ( cells[i].pos_row >= rows ) cells[i].pos_row -= rows;
 					if ( cells[i].pos_col < 0 ) cells[i].pos_col += columns;
-					if ( cells[i].pos_col >= columns ) cells[i].pos_col -= columns;
+					else if ( cells[i].pos_col >= columns ) cells[i].pos_col -= columns;
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
@@ -542,7 +542,7 @@ int main(int argc, char *argv[]) {
 		free( new_cells );
 
 		/* 4.8. Decrease non-harvested food */
-		current_max_food = 0.0f;
+		current_max_food = sim_stat.history_max_food;
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
 				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%

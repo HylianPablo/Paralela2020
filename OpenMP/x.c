@@ -402,7 +402,12 @@ int main(int argc, char *argv[])
 
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
-	double dummy[num_new_sources][3];
+
+	double *rand41 = malloc(3*num_new_sources * sizeof(double));
+	double *rand41s = NULL;
+
+	if (food_spot_active)
+		rand41s = malloc(3*num_new_sources_spot * sizeof(double));
 
 	for (iter = 0; iter < max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++)
 	{
@@ -411,22 +416,19 @@ int main(int argc, char *argv[])
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		for (i = 0; i < num_new_sources; i++)
+		for (i=0; i<num_new_sources; i++)
 		{
-			dummy[i][0] = erand48(food_random_seq);
-			dummy[i][1] = erand48(food_random_seq);
-			dummy[i][2] = erand48(food_random_seq);
+			rand41[3*i] = erand48( food_random_seq );
+			rand41[3*i + 1] = erand48( food_random_seq );
+			rand41[3*i + 2] = erand48( food_random_seq );
 		}
 
-		int row, col;
-		float food;
-		//#pragma omp parallel for default(none) private(row,col,food) shared(culture,dummy,rows,columns,food_level,num_new_sources)
-		for (i = 0; i < num_new_sources; i++)
+		for (i=0; i<num_new_sources; i++)
 		{
-			row = (int)(dummy[i][0] * rows);
-			col = (int)(dummy[i][1] * columns);
-			food = (float)(dummy[i][2] * food_level);
-			accessMat(culture, row, col) += (float)food;
+			int row = (int)(rows * rand41[3*i]);
+			int col = (int)(columns * rand41[3*i + 1]);
+			float food = (float)( food_level * rand41[3*i + 2]);
+			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
 
 		// In the special food spot
@@ -434,24 +436,18 @@ int main(int argc, char *argv[])
 		{
 			for (i = 0; i < num_new_sources_spot; i++)
 			{
-				int row = food_spot_row + (int)(food_spot_size_rows * erand48(food_spot_random_seq));
-				int col = food_spot_col + (int)(food_spot_size_cols * erand48(food_spot_random_seq));
-				float food = (float)(food_spot_level * erand48(food_spot_random_seq));
-				culture[row * columns + col] += food;
-				//dummy[i][0] = erand48( food_spot_random_seq );
-				//dummy[i][1] = erand48( food_spot_random_seq );
-				//dummy[i][2] = erand48( food_spot_random_seq );
+				rand41s[3*i] = erand48( food_spot_random_seq );
+				rand41s[3*i + 1] = erand48( food_spot_random_seq );
+				rand41s[3*i + 2] = erand48( food_spot_random_seq );
 			}
-			/*#pragma omp parallel for //firstprivate(dummy2,culture) lastprivate(dummy2,culture)
-			for (i=0; i<num_new_sources_spot; i++){ 
-				//culture[(int)(dummy2[0][i]*columns+dummy2[1][i])]+=dummy2[2][i];
-				dummy[i][0] = (int)(dummy[0][i] * food_spot_size_rows) + food_spot_row;
-				dummy[i][1] = (int)(dummy[1][i] * food_spot_size_cols) + food_spot_col;
-				dummy[i][2] = (float)(dummy[2][i] * food_spot_level);
-				#pragma omp atomic
-				accessMat( culture, dummy[i][0], dummy[i][1] ) +=  (float)dummy[i][2];
-				//accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
-			}*/
+
+			for (i = 0; i < num_new_sources_spot; i++)
+			{
+				int row = food_spot_row + (int)(food_spot_size_rows * rand41s[3*i]);
+				int col = food_spot_col + (int)(food_spot_size_cols * rand41s[3*i + 1]);
+				float food = (float)(food_spot_level * rand41s[3*i + 2]);
+				culture[row * columns + col] += food;
+			}
 		}
 
 /* 4.2. Prepare ancillary data structures */
@@ -472,9 +468,8 @@ int main(int argc, char *argv[])
 
 		/* 4.3. Cell movements */
 		int max_age = sim_stat.history_max_age;
-		#pragma omp parallel for default(shared) \
-		reduction(max:max_age) reduction(+:step_dead_cells) \
-		schedule(static)
+		#pragma omp parallel for default(shared) schedule(guided) \
+		reduction(max:max_age) reduction(+:step_dead_cells)
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
@@ -553,7 +548,7 @@ int main(int argc, char *argv[])
 		}
 
 		#pragma omp parallel for default(shared) \
-		schedule(static)
+		schedule(guided) 
 		for (i = 0; i < num_cells; i++)	
 		{
 			if (cells[i].alive)
@@ -567,31 +562,35 @@ int main(int argc, char *argv[])
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
 				if (cells[i].age > 30.0f && cells[i].storage > 20.0f)
 				{
+					int new;
 					// Split: Create new cell
-					#pragma omp atomic
-					step_new_cells++;
+					#pragma omp critical
+					{
+						step_new_cells++;
+						new = step_new_cells;
+					}
 
 					// New cell is a copy of parent cell
-					new_cells[step_new_cells - 1] = cells[i];
+					new_cells[new - 1] = cells[i];
 
 					// Split energy stored and update age in both cells
 					cells[i].storage /= 2.0f;
-					new_cells[step_new_cells - 1].storage /= 2.0f;
+					new_cells[new - 1].storage /= 2.0f;
 					cells[i].age = 1;
-					new_cells[step_new_cells - 1].age = 1;
+					new_cells[new - 1].age = 1;
 
+					
 					// Random seed for the new cell, obtained using the parent random sequence
-					new_cells[step_new_cells - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
-					new_cells[step_new_cells - 1].random_seq[1] = (unsigned short)nrand48(cells[i].random_seq);
-					new_cells[step_new_cells - 1].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
-
+					new_cells[new - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
+					new_cells[new - 1].random_seq[1] = (unsigned short)nrand48(cells[i].random_seq);
+					new_cells[new - 1].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
 					// Both cells start in random directions
 					cell_new_direction(&cells[i]);
-					cell_new_direction(&new_cells[step_new_cells - 1]);
+					cell_new_direction(&new_cells[new - 1]);
 
 					// Mutations of the movement genes in both cells
 					cell_mutation(&cells[i]);
-					cell_mutation(&new_cells[step_new_cells - 1]);
+					cell_mutation(&new_cells[new - 1]);
 				}
 			}
 		} // End cell actions
@@ -616,12 +615,10 @@ int main(int argc, char *argv[])
 		/* 4.6. Clean dead cells from the original list */
 		// 4.6.1. Move alive cells to the left to substitute dead cells
 		int free_position = 0;
-		int alive_in_main_list = 0;
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
 			{
-				alive_in_main_list++;
 				if (free_position != i)
 				{
 					cells[free_position] = cells[i];
@@ -630,7 +627,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		num_cells = alive_in_main_list;
+		num_cells = free_position;
 		cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells + step_new_cells));
 
 		current_max_food = 0.0f;
