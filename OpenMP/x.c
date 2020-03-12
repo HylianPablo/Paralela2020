@@ -350,7 +350,6 @@ int main(int argc, char *argv[])
 	schedule(guided)
 	for (i = 0; i < rows*columns; i++)
 		culture[i] = 0.0f;
-	//memset(culture, 0.0f, sizeof(float) * (size_t)rows * (size_t)columns);
 
 #pragma omp parallel for default(shared) \
 	schedule(guided)
@@ -453,12 +452,12 @@ int main(int argc, char *argv[])
 
 /* 4.2. Prepare ancillary data structures */
 /* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
+
 #pragma omp parallel for default(none) \
 	shared(rows, columns, culture_cells) \
 	schedule(static)
 		for (i = 0; i < rows*columns; i++)
 			culture_cells[i] = 0;
-		//memset(culture_cells, 0.0f, sizeof(short) * (size_t)rows * (size_t)columns);
 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
 		if (culture == NULL || culture_cells == NULL)
@@ -485,6 +484,8 @@ int main(int argc, char *argv[])
 				{
 					// Cell has died
 					cells[i].alive = false;
+
+				#pragma omp atomic
 					step_dead_cells++;
 					continue;
 				}
@@ -493,7 +494,7 @@ int main(int argc, char *argv[])
 					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
 					cells[i].storage -= 0.2f;
 				}
-				else
+				else 
 				{
 					// Consume energy to move
 					cells[i].storage -= 1.0f;
