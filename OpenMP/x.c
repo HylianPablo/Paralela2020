@@ -16,7 +16,6 @@
 #include<stdbool.h>
 #include<cputils.h>
 #include<omp.h>
-#include<time.h>
 
 /* Structure to store data of a cell */
 typedef struct {
@@ -324,7 +323,7 @@ int main(int argc, char *argv[]) {
 	}
 	//#pragma omp parallel for
 	//for( i=0; i<rows*columns; i++ )
-	//		culture[i] = 0.0f;
+			//culture[i] = 0.0f;
 	#pragma omp parallel
 	memset(culture,0.0f,sizeof(float)* (size_t)rows*(size_t)columns);
 
@@ -379,33 +378,52 @@ int main(int argc, char *argv[]) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
 		int num_new_sources = (int)(rows * columns * food_density);		
-		//#pragma omp parallel for
+		//#pragma omp parallel for firstprivate(culture) lastprivate(culture)
+		float dummy[3][num_new_sources];
 		for (i=0; i<num_new_sources; i++) {
-			int row = (int)(rows * erand48( food_random_seq ));
-			int col = (int)(columns * erand48( food_random_seq ));
-			float food = (float)( food_level * erand48( food_random_seq ));
-			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+			//int row = (int)(rows * erand48( food_random_seq ));
+			//int col = (int)(columns * erand48( food_random_seq ));
+			//float food = (float)( food_level * erand48( food_random_seq ));
+			//culture[row*columns+col]+=food;
+			dummy[0][i] = (int)(rows * erand48( food_random_seq ));
+			dummy[1][i] = (int)(columns * erand48( food_random_seq ));
+			dummy[2][i] = (float)( food_level * erand48( food_random_seq ));
 		}
+		#pragma omp parallel for //firstprivate(dummy,culture) lastprivate(culture,dummy)
+		for (i=0; i<num_new_sources; i++) 
+			//accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+			//culture[(int)(dummy[0][i]*columns+dummy[1][i])]+=dummy[2][i];
+			accessMat( culture, dummy[0][i], dummy[1][i] ) = accessMat( culture, dummy[0][i], dummy[1][i] ) + dummy[2][i];
+
 		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
-			//#pragma omp parallel for private(culture)
+			//float dummy2[3][num_new_sources];
+			//#pragma omp parallel for firstprivate(culture) lastprivate(culture)
 			for (i=0; i<num_new_sources; i++) {
 				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
 				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
 				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
-				//#pragma omp parallel private(culture)
-				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+				culture[row*columns+col]+=food;
+				//dummy2[0][i] = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
+				//dummy2[1][i] = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
+				//dummy2[2][i] = (float)( food_spot_level * erand48( food_spot_random_seq ));
 			}
+			//#pragma omp parallel for firstprivate(dummy2,culture) lastprivate(dummy2,culture)
+			//for (i=0; i<num_new_sources; i++) 
+				//culture[(int)(dummy2[0][i]*columns+dummy2[1][i])]+=dummy2[2][i];
+				//accessMat( culture, dummy[0][i], dummy[1][i] ) = accessMat( culture, dummy[0][i], dummy[1][i] ) + dummy[2][i];
+				//accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
 
 		/* 4.2. Prepare ancillary data structures */
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */		
-		//#pragma omp parallel 
+		#pragma omp parallel 
+		memset(culture_cells,0.0f,sizeof(short)* (size_t)rows*(size_t)columns);
 			//for( i=0; i<rows; i++ )
 			//#pragma omp parallel for 
 			//for(j=0;j<columns;j++)
-				memset(culture_cells,0.0f,sizeof(short)* (size_t)rows*(size_t)columns);
+				//memset(culture_cells,0.0f,sizeof(short)* (size_t)rows*(size_t)columns);
 				//culture_cells[i*columns+j] = 0.0f;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
