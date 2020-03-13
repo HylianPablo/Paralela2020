@@ -411,10 +411,6 @@ int main(int argc, char *argv[])
 
 #pragma omp parallel if (food_spot_active) default(shared) private(i)
 		{
-#pragma omp sections
-			{
-#pragma omp section
-				{
 					/* 4.1. Spreading new food */
 					// Across the whole culture
 					for (i = 0; i < num_new_sources; i++)
@@ -431,9 +427,6 @@ int main(int argc, char *argv[])
 						float food = (float)(food_level * rand41[3 * i + 2]);
 						accessMat( culture, row, col ) += food;
 					}
-				}
-#pragma omp section
-				{
 					// In the special food spot
 					if (food_spot_active)
 					{
@@ -452,8 +445,6 @@ int main(int argc, char *argv[])
 							accessMat( culture, row, col ) += food;
 						}
 					}
-				}
-			}
 		}
 
 /* 4.2. Prepare ancillary data structures */
