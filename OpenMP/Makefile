@@ -1,7 +1,6 @@
-
-CFLAGS= -I. -O3 -fopenmp
+CFLAGS= -I. -O3 -Wall -Werror -W
 CFLAGS_DEBUG= -I. -g -O0
-LIBS=-lm
+LIBS=-lm -fopenmp
 
 evolution: evolution.c
 	gcc $(CFLAGS) $< -o $@ $(LIBS)
