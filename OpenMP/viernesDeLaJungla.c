@@ -409,8 +409,6 @@ int main(int argc, char *argv[])
 		int step_new_cells = 0;
 		int step_dead_cells = 0;
 
-#pragma omp parallel if (food_spot_active) default(shared) private(i)
-		{
 					/* 4.1. Spreading new food */
 					// Across the whole culture
 					for (i = 0; i < num_new_sources; i++)
@@ -445,7 +443,6 @@ int main(int argc, char *argv[])
 							accessMat( culture, row, col ) += food;
 						}
 					}
-		}
 
 /* 4.2. Prepare ancillary data structures */
 /* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
