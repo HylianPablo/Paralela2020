@@ -15,8 +15,6 @@
 #include <float.h>
 #include <stdbool.h>
 #include <cputils.h>
-#include <omp.h>
-#include <time.h>
 
 /* Structure to store data of a cell */
 typedef struct
@@ -332,7 +330,7 @@ int main(int argc, char *argv[])
 	/* 2. Start global timer */
 	double ttotal = cp_Wtime();
 
-	/*
+/*
  *
  * START HERE: DO NOT CHANGE THE CODE ABOVE THIS POINT
  *
@@ -340,19 +338,19 @@ int main(int argc, char *argv[])
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc(sizeof(float) * (size_t)rows * (size_t)columns);
-	//float culture[rows*columns];
 	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
-	//short culture_cells[rows*columns];
 	if (culture == NULL || culture_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
 		exit(EXIT_FAILURE);
 	}
-#pragma omp parallel for default(shared)
-for(i=0;i<rows*columns;i++)
-	culture[i]=0.0f;
+#pragma omp parallel for default(none) \
+	shared(rows, columns, culture)     \
+		schedule(guided)
+	for (i = 0; i < rows * columns; i++)
+		culture[i] = 0.0f;
 
-#pragma omp parallel for default(shared)
+#pragma omp parallel for default(shared) schedule(guided)
 	for (i = 0; i < num_cells; i++)
 	{
 		cells[i].alive = true;
@@ -398,10 +396,13 @@ for(i=0;i<rows*columns;i++)
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
 	int iter;
+	int max_age = 0;
 
 	int num_new_sources = (int)(rows * columns * food_density);
-	int num_new_sources_spot = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
-	double dummy[num_new_sources][3];
+	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
+
+	double rand41[3 * num_new_sources];
+	double rand41s[3 * num_new_sources_spot];
 
 	for (iter = 0; iter < max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++)
 	{
@@ -412,56 +413,46 @@ for(i=0;i<rows*columns;i++)
 		// Across the whole culture
 		for (i = 0; i < num_new_sources; i++)
 		{
-			dummy[i][0] = erand48(food_random_seq);
-			dummy[i][1] = erand48(food_random_seq);
-			dummy[i][2] = erand48(food_random_seq);
+			rand41[3 * i] = erand48(food_random_seq);
+			rand41[3 * i + 1] = erand48(food_random_seq);
+			rand41[3 * i + 2] = erand48(food_random_seq);
 		}
 
-		int row, col;
-		float food;
-		//#pragma omp parallel for default(none) private(row,col,food) shared(culture,dummy,rows,columns,food_level,num_new_sources)
 		for (i = 0; i < num_new_sources; i++)
 		{
-			row = (int)(dummy[i][0] * rows);
-			col = (int)(dummy[i][1] * columns);
-			food = (float)(dummy[i][2] * food_level);
-#pragma omp atomic
-			accessMat(culture, row, col) += (float)food;
+			int row = (int)(rows * rand41[3 * i]);
+			int col = (int)(columns * rand41[3 * i + 1]);
+			float food = (float)(food_level * rand41[3 * i + 2]);
+			accessMat( culture, row, col ) += food;
 		}
-
 		// In the special food spot
 		if (food_spot_active)
 		{
 			for (i = 0; i < num_new_sources_spot; i++)
 			{
-				int row = food_spot_row + (int)(food_spot_size_rows * erand48(food_spot_random_seq));
-				int col = food_spot_col + (int)(food_spot_size_cols * erand48(food_spot_random_seq));
-				float food = (float)(food_spot_level * erand48(food_spot_random_seq));
-				culture[row * columns + col] += food;
-				//dummy[i][0] = erand48( food_spot_random_seq );
-				//dummy[i][1] = erand48( food_spot_random_seq );
-				//dummy[i][2] = erand48( food_spot_random_seq );
+				rand41s[3 * i] = erand48(food_spot_random_seq);
+				rand41s[3 * i + 1] = erand48(food_spot_random_seq);
+				rand41s[3 * i + 2] = erand48(food_spot_random_seq);
 			}
-			/*#pragma omp parallel for //firstprivate(dummy2,culture) lastprivate(dummy2,culture)
-			for (i=0; i<num_new_sources_spot; i++){ 
-				//culture[(int)(dummy2[0][i]*columns+dummy2[1][i])]+=dummy2[2][i];
-				dummy[i][0] = (int)(dummy[0][i] * food_spot_size_rows) + food_spot_row;
-				dummy[i][1] = (int)(dummy[1][i] * food_spot_size_cols) + food_spot_col;
-				dummy[i][2] = (float)(dummy[2][i] * food_spot_level);
-				#pragma omp atomic
-				accessMat( culture, dummy[i][0], dummy[i][1] ) +=  (float)dummy[i][2];
-				//accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
-			}*/
+
+			for (i = 0; i < num_new_sources_spot; i++)
+			{
+				int row = food_spot_row + (int)(food_spot_size_rows * rand41s[3 * i]);
+				int col = food_spot_col + (int)(food_spot_size_cols * rand41s[3 * i + 1]);
+				float food = (float)(food_spot_level * rand41s[3 * i + 2]);
+				accessMat( culture, row, col ) += food;
+			}
 		}
 
 /* 4.2. Prepare ancillary data structures */
 /* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-#pragma omp parallel default(shared)
-		for(i=0;i<rows*columns;i++)
-			culture_cells[i]=0;
+#pragma omp parallel for default(none)   \
+	shared(rows, columns, culture_cells) \
+		schedule(static)
+		for (i = 0; i < rows * columns; i++)
+			culture_cells[i] = 0;
 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
-		//float food_to_share[num_cells];
 		if (culture == NULL || culture_cells == NULL)
 		{
 			fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
@@ -469,8 +460,9 @@ for(i=0;i<rows*columns;i++)
 		}
 
 		/* 4.3. Cell movements */
-		int max_age = sim_stat.history_max_age;
-		#pragma omp parallel for reduction(+:step_dead_cells) reduction(-:num_cells_alive) reduction(max:max_age)
+#pragma omp parallel for schedule(guided) reduction(+ \
+													 : step_dead_cells) reduction(max \
+																					: max_age)
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
@@ -485,9 +477,6 @@ for(i=0;i<rows*columns;i++)
 				{
 					// Cell has died
 					cells[i].alive = false;
-				#pragma omp atomic
-					num_cells_alive--;
-				#pragma omp atomic
 					step_dead_cells++;
 					continue;
 				}
@@ -496,12 +485,13 @@ for(i=0;i<rows*columns;i++)
 					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
 					cells[i].storage -= 0.2f;
 				}
-				else 
+				else
 				{
 					// Consume energy to move
 					cells[i].storage -= 1.0f;
 
 					/* 4.3.2. Choose movement direction */
+
 					float prob = (float)erand48(cells[i].random_seq);
 					if (prob < cells[i].choose_mov[0])
 					{
@@ -525,17 +515,17 @@ for(i=0;i<rows*columns;i++)
 					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
 					if (cells[i].pos_row < 0)
 						cells[i].pos_row += rows;
-					if (cells[i].pos_row >= rows)
+					if (cells[i].pos_row >= rows)	// These can't be elsed.
 						cells[i].pos_row -= rows;
 					if (cells[i].pos_col < 0)
 						cells[i].pos_col += columns;
-					if (cells[i].pos_col >= columns)
+					if (cells[i].pos_col >= columns)// These can't be elsed.
 						cells[i].pos_col -= columns;
 				}
 
-				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				#pragma omp atomic
-				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+/* 4.3.4. Annotate that there is one more cell in this culture position */
+#pragma omp atomic
+				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 				food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
 			}
@@ -545,14 +535,15 @@ for(i=0;i<rows*columns;i++)
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
-		//Cell new_cells[num_cells];
 		if (new_cells == NULL)
 		{
 			fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
 			exit(EXIT_FAILURE);
 		}
 
-		for (i = 0; i < num_cells; i++)	
+		int free_position = 0;
+
+		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
 			{
@@ -566,18 +557,14 @@ for(i=0;i<rows*columns;i++)
 				if (cells[i].age > 30 && cells[i].storage > 20)
 				{
 					// Split: Create new cell
-					num_cells_alive++;
-					sim_stat.history_total_cells++;
 					step_new_cells++;
-
-					// New cell is a copy of parent cell
-					new_cells[step_new_cells - 1] = cells[i];
 
 					// Split energy stored and update age in both cells
 					cells[i].storage /= 2.0f;
-					new_cells[step_new_cells - 1].storage /= 2.0f;
 					cells[i].age = 1;
-					new_cells[step_new_cells - 1].age = 1;
+
+					// New cell is a copy of parent cell
+					new_cells[step_new_cells - 1] = cells[i];
 
 					// Random seed for the new cell, obtained using the parent random sequence
 					new_cells[step_new_cells - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
@@ -585,76 +572,70 @@ for(i=0;i<rows*columns;i++)
 					new_cells[step_new_cells - 1].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
 
 					// Both cells start in random directions
-					cell_new_direction(&cells[i]);
-					cell_new_direction(&new_cells[step_new_cells - 1]);
+					//cell_new_direction( &cells[i] );
+					float angle = (float)(2 * M_PI * erand48(cells[i].random_seq));
+					cells[i].mov_row = sinf(angle);
+					cells[i].mov_col = cosf(angle);
+
+					//cell_new_direction( &new_cells[ step_new_cells-1 ] );
+					angle = (float)(2 * M_PI * erand48(new_cells[step_new_cells - 1].random_seq));
+					new_cells[step_new_cells - 1].mov_row = sinf(angle);
+					new_cells[step_new_cells - 1].mov_col = cosf(angle);
 
 					// Mutations of the movement genes in both cells
 					cell_mutation(&cells[i]);
 					cell_mutation(&new_cells[step_new_cells - 1]);
 				}
-			}
-		} // End cell actions
-
-		/* 4.5. Clean ancillary data structures */
-		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
-		#pragma omp parallel for
-		for (i = 0; i < num_cells; i++)
-		{
-			if (cells[i].alive)
-			{
+				// 4.5
 				accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
-			}
-		}
-		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
-		free(food_to_share);
 
-		/* 4.6. Clean dead cells from the original list */
-		// 4.6.1. Move alive cells to the left to substitute dead cells
-		int free_position = 0;
-		int alive_in_main_list = 0;
-		for (i = 0; i < num_cells; i++)
-		{
-			if (cells[i].alive)
-			{
-				alive_in_main_list++;
+				// 4.6
 				if (free_position != i)
 				{
 					cells[free_position] = cells[i];
 				}
 				free_position++;
 			}
-		}
+
+		} // End cell actions
+		num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells;
+		sim_stat.history_total_cells += step_new_cells;
+
+		/* 4.5. Clean ancillary data structures */
+		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
+		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
+		free(food_to_share);
+
+		/* 4.6. Clean dead cells from the original list */
+		// 4.6.1. Move alive cells to the left to substitute dead cells
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		num_cells = alive_in_main_list;
+		num_cells = free_position;
 		cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells + step_new_cells));
 
 		current_max_food = 0.0f;
-#pragma omp parallel
+
+		/* 4.7. Join cell lists: Old and new cells list */
+		if (step_new_cells > 0)
 		{
-#pragma omp sections
-			{
+#pragma omp parallel for default(none)                  \
+	shared(step_new_cells, cells, new_cells, num_cells) \
+		schedule(static)
+			for (j = 0; j < step_new_cells; j++)
+				cells[num_cells + j] = new_cells[j];
+			num_cells += step_new_cells;
+		}
 
-/* 4.7. Join cell lists: Old and new cells list */
-#pragma omp section
-				if (step_new_cells > 0)
-				{
-#pragma omp parallel for default(shared)
-					for (j = 0; j < step_new_cells; j++)
-						cells[num_cells + j] = new_cells[j];
-					num_cells += step_new_cells;
-				}
-
-/* 4.8. Decrease non-harvested food */
-#pragma omp section
-#pragma omp parallel for schedule(dynamic) reduction(max \
-								   : current_max_food)
-				for (i = 0; i < rows * columns; i++)
-				{
-					culture[i] *= 0.95f; // Reduce 5%
-					if (culture[i] > current_max_food)
-						current_max_food = culture[i];
-				}
-			}
+		/* 4.8. Decrease non-harvested food */
+#pragma omp parallel for default(none) \
+	shared(rows, columns, culture)     \
+		schedule(guided)               \
+			reduction(max              \
+					  : current_max_food)
+		for (i = 0; i < rows * columns; i++)
+		{
+			culture[i] *= 0.95f; // Reduce 5%
+			if (culture[i] > current_max_food)
+				current_max_food = culture[i];
 		}
 		free(new_cells);
 
@@ -679,7 +660,73 @@ for(i=0;i<rows*columns;i++)
 #endif // DEBUG
 	}
 
-	/*
+/*
+You were expecting more code.
+
+                                                        .`.````````````.`.`` .``` . ` ``` ` ````````````````````````` ` ` ` ` ` ` ```````````                   
+                                                    .`..``.```````````.``.`..```..````````````````````````````.````````````````````````````` `.`      `         
+                                                    . `-` `` ` ````` . ````` ```` ``````````````` ``` ``` ``` `.```` ``` ``` ``` ` `````  ` ```.  ```.`         
+                                                    .````````````````.```-.````.`````````````````````````````````````````````````````````````` `.`` ..          
+                                                     ```    ` ````` .`` `-`` .````````````` `.` ``` ```````````` ``` `` ``` ` ``` ` ` ``` ` `    ``..```        
+                                                    ` ``````````````.````.```.``````````````````````````.````````` `.`````````` ``````````````````````...`      
+                                                    -```````````````-````.``.`````````.````````````````````````````````````````````````````````````.            
+                                                    -````````````````.```.``-``````````.````````..````````.````````````.``.```` ````````````````````.           
+                                                    ```````````````````````..```````````.``````` ..`````` .```` ```  `` ```` ````..`...```````````.````         
+                                                    `.````````````````.````..```````````` ````````.````````.```````````````.....```    ```````````` ``.         
+                                          .``     `````````````````.`.```.-.-``-````````-``````````.```.` ````````````````   ``````````````````````.  .`        
+                                          ``````````        ``` ` ``.`.``.`..``.`` ``.` `.` ```.`` . `````...``..`   ` ``       ```.` ``` ``` ` ` ```  `        
+                                            ``    ```````````````````.. ``  `.`-```` ````-``.`.````.`````` ` `````..`````````````  `````````````````.           
+                                             `````````````````````.```-      .`-``````.``-```.```````.```````````.````````-``````````.```````````````           
+                                                .`-` ``````````.``````-       `-``````.`.```.````   ``.-``````````````...`.```.`  ```.`````````````.`           
+                                                `. `.```````````````.`.   `    `. `. `.`.``````.`````````````````````` ``.``````..````````````` ` `.            
+                                               `.```.```````.```.```-..    `   .` `````-.```````    ```````````````````...```.`````.```.``````````.`            
+                                               .``  .````````.``..`...``   `` .` .``.`````.  .```.```        ``````````..``````.````.``.`````````-`             
+                                               .`  `. `    ` .`````.`.````.`  `` ```      .``.```.`          ` ````````.`` ` .`.`````` .`` ``` ```     ``       
+                                                    .``.````.-`.```  `````````   `         `````               ````````.`````.`````````-```````.``` `````       
+                                                    `.`.` ```.-```. ````````-`                                 ````````` ` ````````````````````````````         
+                                                      .``.`  .``` `.`.` ` ````.                                ```````````````  ```.` ``````````.````           
+                                                   ```` ````````````.```.``.  .                                ``````````````````.. ``````````````              
+                                               `````  ``.``.````````. ````   . .`                              `````````````-````.```````````` ```.`            
+                                                    ``` .``-.``.````.`       ``.                               `````````````.`. ` ````````````.``` `.           
+                                                        ``.````-```` .      ` `   `````                        ` ` ` ` ``` `. .`` ``` ` ` ` ` ``  ```           
+                                                         `:  ``.`````.`     ``````.````                `      ``````````````-`.````````````````.    `.          
+                                                                    ``.         `` `                 `.`       ` ` ` ` ` ` `.``. `  ` `  ````` .`               
+                                                                      .`         ```       ` .......```       ``````````````.`` -``.````````````.               
+                                                                       .         `.   `.``````     `` `       ``````````````-``` ``.`````````` ` .              
+                                                                       `.        ``-`.````````..`````.       ``````````````.```````.```.``````````````          
+                                                                        `.         ` .````` ``.``````.       `````````````.````````.``. `````    `  ``..``      
+                                                                          .``       `` ```.`        ``      ````````````` `````````.`````````` `````.``         
+                                                                           `.`       .```-`       ``.       .```.`.`.````.```````.``.`.````````````` ``         
+                                                                              ``       .`.     `` ``        ` ` `  ```  `.```  `````` `.`` ` ` ` `    ```       
+                                                                               ``      .``..`...``         ``````..`````. ``...` `  ``` ........ `.`.`` ```     
+                                                                                ``      ```````           ``````` `````.```` ```````````.````` `````````` ``    
+                                         ````                                     ```       ```  ```      ````.````````-`````````````````.````...-```-`..```.   
+                                    ```````  ``                                     `.     .```.``       `````````````.````````````````` ``     `.```` `` ` ``  
+                               ```.``         .        ````` ``                      `.    ``````      ```````````````.```````````````````.````````` ```.    `` 
+                           ````` ..           ``    ``.`  ``  ````                    `.            ```````````````````````````````````````.``````..`````.      
+                    ` ```` `      .            ``  .`             .                    ````      `.```   ````````````````````` `   ``` .````````  `.```` .      
+                 ````.````````.````...`..````   ``.`          ````.                     ```.`.`..`.````````````````````````...````.```. ```  ``````.`````.      
+                `.`````````````            `.    -`        `````                   ``````````.```.`````````````````````````````````````````````````.``````.     
+                .``````.``  -             .`     .        ..                    `` ``-``` ` ``.```.````````` ```.` ``````..`````````` ``````````````.``````     
+            `..````.``` ``...```          .      .      `.`                   .`` ```   ` ``` ````.````` ````````....````     ```````````````````````````.`     
+           .``````````````.` ``````      `-      .```  ```                    `````````````````.``-`````````````` ```````````````````````````````````.````.     
+          ..``````````.``.        `.     .    ``````.``                        `.```..`````.````.`.``` ````.`````````````````-````````````````````` ````````    
+         ```````````` `````       `      . `` ` ``````                          ``     `` ` ``` `. .````   ` ` ` ` . ` ````` .````` ` ` ` ` ` ` `````` ` ` `````
+        `-`````.`.```     ```    ``     `-`` ``````.``                           .``  ````.``.```.```.``.``````````-``.```.``-``..``````````````.````````````` .
+        .`````````.`        .`   .      -`````````.`                            ``.-``-  ..`. .````.`.```.``````.``--`.``````-``````````` ```` ````````````````.
+       .````````..`.      `.`   .      .````````.`                             .` - .`-` `.`.. .``.``.` .-``````````.``````````   ` ``..`.` ``.````````````````.
+     `.`````````. `.      ``   `.  ``.``````````.                              `  `  `.  `.` ``. . `  `` .`  ` ` ` `.`` ` ` ``````````  ``````  ` ` ` ` ``` ` `.
+    `.``````````.  .`    `.     -``````````````.                            ``` `    `    .   .``.`````````````````````` ``````````````````````````````````````.
+   ..````````````.` `    .`  `````````````````.`                 ```.````````   ```          . .````` ```````````````````````` ``  `````` ``` ` ```````````````.
+  .`````````````` ```  ` `.```  `````````````.`           ````.``                  ``        . . ``````````````` ``````````` ``````   ` ` ` ` ` ` ` ` ````` ```.
+ .```.`.`.```.`.`.````` ``.`.`.```.`.`.`.`.`.        `.````                          ``     ....  `````````````````````````..``````````````````````````````````.
+`.```````````````````````.`````````````````.    ```.                                  `.  `````.``.``````` `````````   ````````````````````````````````````` ``.
+.````````````````````````.```````````````.`.````                                    .` `.-`` `         `````````````...` `  ```````````````````````````````````.
+.````````````````````````.``````````````` `                                        `````                ` ` ` ` ````  ` ` ` ` ` ` ` ` ` ` ` ` ` ` ` ` `````````.
+But it was me, Dio! 
+*/
+
+/*
  *
  * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
  *
