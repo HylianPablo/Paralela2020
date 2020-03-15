@@ -17,5 +17,5 @@ safe: original.c
 safe-debug: original.c
 	gcc $(CFLAGS_DEBUG) -DDEBUG $< -o debug $(LIBS)
 
-pablo:	viernesDeLaJungla.c
-	gcc $(CFLAGS) $< $(LIBS) 
+pablo: viernesDeLaJungla.c
+	gcc $(CFLAGS) $< $(LIBS)

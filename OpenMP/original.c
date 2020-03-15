@@ -401,6 +401,14 @@ int main(int argc, char *argv[]) {
 			exit( EXIT_FAILURE );
 		}
 
+		printf("1 Iter %d\n", iter);
+		for (i=0; i<num_cells; i++)
+			printf("Cell %d row %f col %f storage %f age %d alive %d\n", i, cells[i].pos_row, cells[i].pos_col, cells[i].storage, cells[i].age, cells[i].alive);
+		for (i=0; i<rows; i++)
+			for (j=0; j<columns; j++)
+				if (accessMat(culture_cells, i, j) != 0)
+					printf("row %d col %d: %d cells\n", i, j, accessMat(culture_cells, i, j));
+
 		/* 4.3. Cell movements */
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
@@ -465,6 +473,15 @@ int main(int argc, char *argv[]) {
 			exit( EXIT_FAILURE );
 		}
 
+		printf("2 Iter %d\n", iter);
+		for (i=0; i< num_cells; i++)
+			printf("Cell %d row %f col %f storage %f age %d alive %d\n", i, cells[i].pos_row, cells[i].pos_col, cells[i].storage, cells[i].age, cells[i].alive);
+		for (i=0; i<rows; i++)
+			for (j=0; j<columns; j++)
+				if (accessMat(culture_cells, i, j) != 0)
+					printf("row %d col %d: %d cells\n", i, j, accessMat(culture_cells, i, j));
+
+
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
@@ -504,6 +521,15 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		} // End cell actions
+
+		printf("3 Iter %d\n", iter);
+		for (i=0; i< num_cells; i++)
+			printf("Cell %d row %f col %f storage %f age %d alive %d\n", i, cells[i].pos_row, cells[i].pos_col, cells[i].storage, cells[i].age, cells[i].alive);
+		for (i=0; i<rows; i++)
+			for (j=0; j<columns; j++)
+				if (accessMat(culture_cells, i, j) != 0)
+					printf("row %d col %d: %d cells\n", i, j, accessMat(culture_cells, i, j));
+
 
 		/* 4.5. Clean ancillary data structures */
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */

@@ -1,0 +1,467 @@
+6549c6549
+< Iter 409 cell 12 food 0.000000 food_to_share 0.000000 culture_cells 2 
+---
+> Iter 409 cell 12 food 0.000000 food_to_share 0.000000 culture_cells 3 
+8051c8051
+< Iter 455 cell 22 food 4.607203 food_to_share 9.214407 culture_cells 2 
+---
+> Iter 455 cell 22 food 3.071469 food_to_share 9.214407 culture_cells 3 
+8470c8470
+< Iter 470 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 470 cell 17 food 0.309758 food_to_share 0.309758 culture_cells 1 
+8486d8485
+< Iter 470 cell 33 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8504c8503
+< Iter 471 cell 17 food 0.717558 food_to_share 0.717558 culture_cells 1 
+---
+> Iter 471 cell 17 food 0.005830 food_to_share 0.005830 culture_cells 1 
+8520d8518
+< Iter 471 cell 33 food 0.016216 food_to_share 0.016216 culture_cells 1 
+8553,8554c8551
+< Iter 472 cell 33 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 472 cell 34 food 0.000000 food_to_share 0.000000 culture_cells 2 
+---
+> Iter 472 cell 33 food 0.000000 food_to_share 0.000000 culture_cells 2 
+8571c8568
+< Iter 473 cell 17 food 0.265579 food_to_share 0.265579 culture_cells 1 
+---
+> Iter 473 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8586,8587c8583
+< Iter 473 cell 32 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 473 cell 33 food 0.000000 food_to_share 0.000000 culture_cells 2 
+---
+> Iter 473 cell 32 food 0.000000 food_to_share 0.000000 culture_cells 2 
+8604c8600
+< Iter 474 cell 16 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 474 cell 16 food 0.615217 food_to_share 0.615217 culture_cells 1 
+8620d8615
+< Iter 474 cell 32 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8653d8647
+< Iter 475 cell 32 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8686,8687c8680
+< Iter 476 cell 33 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 476 cell 34 food 1.134036 food_to_share 1.134036 culture_cells 1 
+---
+> Iter 476 cell 33 food 1.134036 food_to_share 1.134036 culture_cells 1 
+8702,8703c8695,8696
+< Iter 477 cell 15 food 0.005027 food_to_share 0.005027 culture_cells 1 
+< Iter 477 cell 16 food 0.000000 food_to_share 0.000000 culture_cells 2 
+---
+> Iter 477 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 477 cell 16 food 0.000000 food_to_share 0.000000 culture_cells 3 
+8718,8720c8711,8712
+< Iter 477 cell 31 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 477 cell 32 food 2.410251 food_to_share 2.410251 culture_cells 1 
+< Iter 477 cell 33 food 10.682837 food_to_share 10.682837 culture_cells 1 
+---
+> Iter 477 cell 31 food 2.410251 food_to_share 2.410251 culture_cells 1 
+> Iter 477 cell 32 food 10.682837 food_to_share 10.682837 culture_cells 1 
+8749,8751c8741,8743
+< Iter 478 cell 29 food 0.921878 food_to_share 0.921878 culture_cells 1 
+< Iter 478 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 478 cell 31 food 3.939332 food_to_share 3.939332 culture_cells 1 
+---
+> Iter 478 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 478 cell 30 food 3.939332 food_to_share 3.939332 culture_cells 1 
+> Iter 478 cell 31 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8755d8746
+< Iter 478 cell 35 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8768c8759
+< Iter 479 cell 13 food 0.000048 food_to_share 0.000048 culture_cells 1 
+---
+> Iter 479 cell 13 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8783,8787c8774,8778
+< Iter 479 cell 28 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 479 cell 29 food 5.421633 food_to_share 5.421633 culture_cells 1 
+< Iter 479 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 479 cell 31 food 5.697813 food_to_share 5.697813 culture_cells 1 
+< Iter 479 cell 32 food 0.272624 food_to_share 0.545249 culture_cells 2 
+---
+> Iter 479 cell 28 food 5.421633 food_to_share 5.421633 culture_cells 1 
+> Iter 479 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 479 cell 30 food 5.697813 food_to_share 5.697813 culture_cells 1 
+> Iter 479 cell 31 food 0.272624 food_to_share 0.545249 culture_cells 2 
+> Iter 479 cell 32 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8789d8779
+< Iter 479 cell 34 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8819,8820c8809,8810
+< Iter 480 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 480 cell 30 food 3.434429 food_to_share 3.434429 culture_cells 1 
+---
+> Iter 480 cell 29 food 3.434429 food_to_share 3.434429 culture_cells 1 
+> Iter 480 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8823d8812
+< Iter 480 cell 33 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8835a8825
+> Iter 481 cell 12 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8850,8853c8840,8844
+< Iter 481 cell 28 food 3.322328 food_to_share 3.322328 culture_cells 1 
+< Iter 481 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 481 cell 30 food 18.309494 food_to_share 18.309494 culture_cells 1 
+< Iter 481 cell 31 food 1.651085 food_to_share 1.651085 culture_cells 1 
+---
+> Iter 481 cell 27 food 3.322328 food_to_share 3.322328 culture_cells 1 
+> Iter 481 cell 28 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 481 cell 29 food 18.309494 food_to_share 18.309494 culture_cells 1 
+> Iter 481 cell 30 food 1.651085 food_to_share 1.651085 culture_cells 1 
+> Iter 481 cell 31 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8856d8846
+< Iter 481 cell 34 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8870,8871c8860,8861
+< Iter 482 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 482 cell 16 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 482 cell 13 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 482 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8881,8887c8871,8878
+< Iter 482 cell 26 food 5.488875 food_to_share 5.488875 culture_cells 1 
+< Iter 482 cell 27 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 482 cell 28 food 1.746977 food_to_share 1.746977 culture_cells 1 
+< Iter 482 cell 29 food 0.734221 food_to_share 0.734221 culture_cells 1 
+< Iter 482 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 482 cell 31 food 0.433085 food_to_share 0.433085 culture_cells 1 
+< Iter 482 cell 32 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 482 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 482 cell 27 food 5.488875 food_to_share 5.488875 culture_cells 1 
+> Iter 482 cell 28 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 482 cell 29 food 1.746977 food_to_share 1.746977 culture_cells 1 
+> Iter 482 cell 30 food 0.734221 food_to_share 0.734221 culture_cells 1 
+> Iter 482 cell 31 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 482 cell 32 food 0.433085 food_to_share 0.433085 culture_cells 1 
+> Iter 482 cell 33 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8900,8901c8891,8892
+< Iter 483 cell 13 food 5.059198 food_to_share 5.059198 culture_cells 1 
+< Iter 483 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 483 cell 12 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 483 cell 14 food 5.059198 food_to_share 5.059198 culture_cells 1 
+8905,8910c8896,8901
+< Iter 483 cell 18 food 7.415162 food_to_share 7.415162 culture_cells 1 
+< Iter 483 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 483 cell 20 food 1.560276 food_to_share 1.560276 culture_cells 1 
+< Iter 483 cell 21 food 0.000104 food_to_share 0.000104 culture_cells 1 
+< Iter 483 cell 22 food 0.113970 food_to_share 0.113970 culture_cells 1 
+< Iter 483 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 483 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 483 cell 19 food 7.415162 food_to_share 7.415162 culture_cells 1 
+> Iter 483 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 483 cell 21 food 1.560276 food_to_share 1.560276 culture_cells 1 
+> Iter 483 cell 22 food 0.000104 food_to_share 0.000104 culture_cells 1 
+> Iter 483 cell 23 food 0.113970 food_to_share 0.113970 culture_cells 1 
+8912,8913c8903,8904
+< Iter 483 cell 25 food 1.652079 food_to_share 1.652079 culture_cells 1 
+< Iter 483 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 483 cell 25 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 483 cell 26 food 1.652079 food_to_share 1.652079 culture_cells 1 
+8917a8909
+> Iter 483 cell 31 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8930,8931c8922,8923
+< Iter 484 cell 12 food 0.694254 food_to_share 0.694254 culture_cells 1 
+< Iter 484 cell 13 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 484 cell 12 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 484 cell 13 food 0.694254 food_to_share 0.694254 culture_cells 1 
+8935,8936c8927,8928
+< Iter 484 cell 17 food 5.654762 food_to_share 5.654762 culture_cells 1 
+< Iter 484 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 484 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 484 cell 18 food 5.654762 food_to_share 5.654762 culture_cells 1 
+8938,8943c8930,8935
+< Iter 484 cell 20 food 0.000144 food_to_share 0.000144 culture_cells 1 
+< Iter 484 cell 21 food 0.000134 food_to_share 0.000134 culture_cells 1 
+< Iter 484 cell 22 food 1.652325 food_to_share 1.652325 culture_cells 1 
+< Iter 484 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 484 cell 24 food 9.207319 food_to_share 9.207319 culture_cells 1 
+< Iter 484 cell 25 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 484 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 484 cell 21 food 0.000144 food_to_share 0.000144 culture_cells 1 
+> Iter 484 cell 22 food 0.000134 food_to_share 0.000134 culture_cells 1 
+> Iter 484 cell 23 food 1.652325 food_to_share 1.652325 culture_cells 1 
+> Iter 484 cell 24 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 484 cell 25 food 9.207319 food_to_share 9.207319 culture_cells 1 
+8946,8947c8938,8940
+< Iter 484 cell 28 food 1.134193 food_to_share 1.134193 culture_cells 1 
+< Iter 484 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 484 cell 28 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 484 cell 29 food 1.134193 food_to_share 1.134193 culture_cells 1 
+> Iter 484 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8961,8962c8954,8955
+< Iter 485 cell 13 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 485 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 485 cell 13 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 485 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 2 
+8965,8968c8958,8961
+< Iter 485 cell 17 food 0.734179 food_to_share 0.734179 culture_cells 1 
+< Iter 485 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 485 cell 19 food 6.436508 food_to_share 6.436508 culture_cells 1 
+< Iter 485 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 485 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 485 cell 18 food 0.734179 food_to_share 0.734179 culture_cells 1 
+> Iter 485 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 485 cell 20 food 6.436508 food_to_share 6.436508 culture_cells 1 
+8973,8974c8966,8967
+< Iter 485 cell 25 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 485 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 485 cell 25 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 485 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 2 
+8977a8971
+> Iter 485 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+8995,8996c8989,8990
+< Iter 486 cell 17 food 0.038688 food_to_share 0.038688 culture_cells 1 
+< Iter 486 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 486 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 486 cell 18 food 0.038688 food_to_share 0.038688 culture_cells 1 
+9000,9001c8994,8995
+< Iter 486 cell 22 food 6.783819 food_to_share 13.567638 culture_cells 2 
+< Iter 486 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 486 cell 22 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 486 cell 23 food 6.783819 food_to_share 13.567638 culture_cells 2 
+9008a9003
+> Iter 486 cell 31 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9023,9024c9018,9019
+< Iter 487 cell 14 food 8.389443 food_to_share 8.389443 culture_cells 1 
+< Iter 487 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 487 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 487 cell 15 food 8.389443 food_to_share 8.389443 culture_cells 1 
+9028,9032c9023,9027
+< Iter 487 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 487 cell 21 food 1.762338 food_to_share 1.762338 culture_cells 1 
+< Iter 487 cell 22 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 487 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 487 cell 24 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 487 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 487 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 2 
+> Iter 487 cell 22 food 1.762338 food_to_share 1.762338 culture_cells 1 
+> Iter 487 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 487 cell 24 food 0.000000 food_to_share 0.000000 culture_cells 2 
+9037,9038c9032,9034
+< Iter 487 cell 29 food 5.717490 food_to_share 5.717490 culture_cells 1 
+< Iter 487 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 487 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 487 cell 30 food 5.717490 food_to_share 5.717490 culture_cells 1 
+> Iter 487 cell 31 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9056,9057c9052,9053
+< Iter 488 cell 17 food 10.204803 food_to_share 10.204803 culture_cells 1 
+< Iter 488 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 488 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 488 cell 18 food 10.204803 food_to_share 10.204803 culture_cells 1 
+9059,9060c9055,9056
+< Iter 488 cell 20 food 0.018558 food_to_share 0.018558 culture_cells 1 
+< Iter 488 cell 21 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 488 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 488 cell 21 food 0.018558 food_to_share 0.018558 culture_cells 1 
+9062,9065c9058,9061
+< Iter 488 cell 23 food 0.985489 food_to_share 0.985489 culture_cells 1 
+< Iter 488 cell 24 food 11.000749 food_to_share 11.000749 culture_cells 1 
+< Iter 488 cell 25 food 1.774458 food_to_share 1.774458 culture_cells 1 
+< Iter 488 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 488 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 488 cell 24 food 0.985489 food_to_share 0.985489 culture_cells 1 
+> Iter 488 cell 25 food 11.000749 food_to_share 11.000749 culture_cells 1 
+> Iter 488 cell 26 food 1.774458 food_to_share 1.774458 culture_cells 1 
+9067,9068c9063,9065
+< Iter 488 cell 28 food 1.107279 food_to_share 1.107279 culture_cells 1 
+< Iter 488 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 488 cell 28 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 488 cell 29 food 1.107279 food_to_share 1.107279 culture_cells 1 
+> Iter 488 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9087,9093c9084,9090
+< Iter 489 cell 18 food 0.457540 food_to_share 0.915080 culture_cells 2 
+< Iter 489 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 489 cell 20 food 0.270994 food_to_share 0.270994 culture_cells 1 
+< Iter 489 cell 21 food 2.683027 food_to_share 2.683027 culture_cells 1 
+< Iter 489 cell 22 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 489 cell 23 food 0.000011 food_to_share 0.000011 culture_cells 1 
+< Iter 489 cell 24 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 489 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 489 cell 19 food 0.457540 food_to_share 0.915080 culture_cells 2 
+> Iter 489 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 489 cell 21 food 0.270994 food_to_share 0.270994 culture_cells 1 
+> Iter 489 cell 22 food 2.683027 food_to_share 2.683027 culture_cells 1 
+> Iter 489 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 489 cell 24 food 0.000011 food_to_share 0.000011 culture_cells 1 
+9096,9098c9093,9096
+< Iter 489 cell 27 food 0.678326 food_to_share 0.678326 culture_cells 1 
+< Iter 489 cell 28 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 489 cell 29 food 1.921969 food_to_share 1.921969 culture_cells 1 
+---
+> Iter 489 cell 27 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 489 cell 28 food 0.678326 food_to_share 0.678326 culture_cells 1 
+> Iter 489 cell 29 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 489 cell 30 food 1.921969 food_to_share 1.921969 culture_cells 1 
+9115,9116c9113,9114
+< Iter 490 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 490 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 490 cell 18 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 490 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 2 
+9119,9120c9117,9118
+< Iter 490 cell 22 food 2.393182 food_to_share 2.393182 culture_cells 1 
+< Iter 490 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 490 cell 22 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 490 cell 23 food 2.393182 food_to_share 2.393182 culture_cells 1 
+9123c9121
+< Iter 490 cell 27 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 490 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9125a9124
+> Iter 490 cell 30 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9140,9143c9139,9142
+< Iter 491 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 491 cell 15 food 1.434272 food_to_share 2.868545 culture_cells 2 
+< Iter 491 cell 16 food 10.444337 food_to_share 10.444337 culture_cells 1 
+< Iter 491 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 491 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 491 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 2 
+> Iter 491 cell 16 food 1.434272 food_to_share 2.868545 culture_cells 2 
+> Iter 491 cell 17 food 10.444337 food_to_share 10.444337 culture_cells 1 
+9146,9149c9145,9148
+< Iter 491 cell 20 food 1.434272 food_to_share 2.868545 culture_cells 2 
+< Iter 491 cell 21 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 491 cell 22 food 3.131110 food_to_share 3.131110 culture_cells 1 
+< Iter 491 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 491 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 491 cell 21 food 1.434272 food_to_share 2.868545 culture_cells 2 
+> Iter 491 cell 22 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 491 cell 23 food 3.131110 food_to_share 3.131110 culture_cells 1 
+9152a9152
+> Iter 491 cell 27 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9163,9164c9163
+< Iter 492 cell 10 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 492 cell 11 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 492 cell 11 food 0.000000 food_to_share 0.000000 culture_cells 2 
+9168,9169c9167,9168
+< Iter 492 cell 15 food 13.038625 food_to_share 13.038625 culture_cells 1 
+< Iter 492 cell 16 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 492 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 492 cell 16 food 13.038625 food_to_share 13.038625 culture_cells 1 
+9172,9174c9171,9173
+< Iter 492 cell 19 food 8.555262 food_to_share 8.555262 culture_cells 1 
+< Iter 492 cell 20 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 492 cell 21 food 0.000000 food_to_share 0.000000 culture_cells 2 
+---
+> Iter 492 cell 19 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 492 cell 20 food 8.555262 food_to_share 8.555262 culture_cells 1 
+> Iter 492 cell 21 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9176c9175
+< Iter 492 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 492 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 2 
+9179c9178,9179
+< Iter 492 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 2 
+---
+> Iter 492 cell 26 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 492 cell 27 food 0.000000 food_to_share 0.000000 culture_cells 2 
+9263c9263
+< Iter 496 cell 2 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 496 cell 2 food 0.366183 food_to_share 0.366183 culture_cells 1 
+9579d9578
+< Iter 508 cell 2 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9608,9609c9607,9608
+< Iter 509 cell 5 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 509 cell 6 food 3.011911 food_to_share 6.023823 culture_cells 2 
+---
+> Iter 509 cell 5 food 3.011911 food_to_share 6.023823 culture_cells 2 
+> Iter 509 cell 6 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9615,9616c9614,9615
+< Iter 509 cell 12 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 509 cell 13 food 3.823447 food_to_share 3.823447 culture_cells 1 
+---
+> Iter 509 cell 12 food 3.823447 food_to_share 3.823447 culture_cells 1 
+> Iter 509 cell 13 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9618,9620c9617,9619
+< Iter 509 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 509 cell 16 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 509 cell 17 food 11.615047 food_to_share 11.615047 culture_cells 1 
+---
+> Iter 509 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 2 
+> Iter 509 cell 16 food 11.615047 food_to_share 11.615047 culture_cells 1 
+> Iter 509 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9626,9628c9625,9626
+< Iter 509 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 509 cell 24 food 0.000000 food_to_share 0.000000 culture_cells 2 
+< Iter 509 cell 25 food 3.011911 food_to_share 6.023823 culture_cells 2 
+---
+> Iter 509 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 2 
+> Iter 509 cell 24 food 3.011911 food_to_share 6.023823 culture_cells 2 
+9630a9629
+> Iter 510 cell 2 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9633,9634c9632,9633
+< Iter 510 cell 5 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 510 cell 6 food 6.618204 food_to_share 6.618204 culture_cells 1 
+---
+> Iter 510 cell 5 food 6.618204 food_to_share 6.618204 culture_cells 1 
+> Iter 510 cell 6 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9636,9637c9635,9636
+< Iter 510 cell 8 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 510 cell 9 food 3.775694 food_to_share 3.775694 culture_cells 1 
+---
+> Iter 510 cell 8 food 3.775694 food_to_share 3.775694 culture_cells 1 
+> Iter 510 cell 9 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9639,9644c9638,9643
+< Iter 510 cell 11 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 510 cell 13 food 13.050471 food_to_share 13.050471 culture_cells 1 
+< Iter 510 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 510 cell 15 food 2.856368 food_to_share 2.856368 culture_cells 1 
+< Iter 510 cell 16 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 510 cell 17 food 5.975289 food_to_share 5.975289 culture_cells 1 
+---
+> Iter 510 cell 12 food 13.050471 food_to_share 13.050471 culture_cells 1 
+> Iter 510 cell 13 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 510 cell 14 food 2.856368 food_to_share 2.856368 culture_cells 1 
+> Iter 510 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 1 
+> Iter 510 cell 16 food 5.975289 food_to_share 5.975289 culture_cells 1 
+> Iter 510 cell 17 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9649,9650c9648,9649
+< Iter 510 cell 22 food 0.000000 food_to_share 0.000000 culture_cells 1 
+< Iter 510 cell 23 food 0.579546 food_to_share 0.579546 culture_cells 1 
+---
+> Iter 510 cell 22 food 0.579546 food_to_share 0.579546 culture_cells 1 
+> Iter 510 cell 23 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9652d9650
+< Iter 510 cell 25 food 0.000000 food_to_share 0.000000 culture_cells 1 
+9961c9959
+< Iter 524 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 2 
+---
+> Iter 524 cell 14 food 0.000000 food_to_share 0.000000 culture_cells 3 
+10915c10913
+< Iter 563 cell 15 food 0.000052 food_to_share 0.000052 culture_cells 1 
+---
+> Iter 563 cell 15 food 0.000000 food_to_share 0.000000 culture_cells 1 
+11028c11026
+< Iter 567 cell 24 food 0.000000 food_to_share 0.000000 culture_cells 1 
+---
+> Iter 567 cell 24 food 0.000118 food_to_share 0.000118 culture_cells 1 
+11679,11680c11677,11678
+< Time: 0.008373
+< Result: 600, 18, 207, 189, 44, 19, 3, 72, 41.124821
+---
+> Time: 0.016615
+> Result: 600, 18, 206, 188, 44, 19, 3, 71, 41.124821

@@ -15,7 +15,6 @@
 #include <float.h>
 #include <stdbool.h>
 #include <cputils.h>
-#include <omp.h>
 
 /* Structure to store data of a cell */
 typedef struct
@@ -97,6 +96,10 @@ void cell_mutation(Cell *cell)
 		mutation_value = cell->choose_mov[1] * mutation_percentage;
 		cell->choose_mov[1] -= mutation_value;
 		cell->choose_mov[2] += mutation_value;
+		break;
+	default:
+		fprintf(stderr, "Error: Imposible type of mutation\n");
+		exit(EXIT_FAILURE);
 	}
 	/* 4. Correct potential precision problems */
 	cell->choose_mov[2] = 1.0f - cell->choose_mov[1] - cell->choose_mov[0];
@@ -334,19 +337,19 @@ int main(int argc, char *argv[])
  */
 
 	/* 3. Initialize culture surface and initial cells */
-	int threshold = omp_get_thread_limit() << 1;
-
 	culture = (float *)malloc(sizeof(float) * (size_t)rows * (size_t)columns);
 	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
 
 #pragma omp parallel for default(none) \
-	shared(rows, columns, culture)     \
-		schedule(guided)
+	shared(rows, columns, culture, culture_cells)     \
+		schedule(static)
 	for (i = 0; i < rows * columns; i++)
+	{
 		culture[i] = 0.0f;
+		culture_cells[i] = 0;
+	}
 
-#pragma omp parallel for if (num_cells > threshold)\
-	default(shared) schedule(guided)
+#pragma omp parallel for default(shared) schedule(guided)
 	for (i = 0; i < num_cells; i++)
 	{
 		cells[i].alive = true;
@@ -357,6 +360,9 @@ int main(int argc, char *argv[])
 		// Initial position: Anywhere in the culture arena
 		cells[i].pos_row = (float)(rows * erand48(cells[i].random_seq));
 		cells[i].pos_col = (float)(columns * erand48(cells[i].random_seq));
+
+		#pragma omp critical
+		accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 		// Movement direction: Unity vector in a random direction
 		cell_new_direction(&cells[i]);
 		// Movement genes: Probabilities of advancing or changing direction: The sum should be 1.00
@@ -441,70 +447,127 @@ int main(int argc, char *argv[])
 			}
 		}
 
-/* 4.2. Prepare ancillary data structures */
-/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-#pragma omp parallel for default(none)   \
-	shared(rows, columns, culture_cells) \
-		schedule(static)
-		for (i = 0; i < rows * columns; i++)
-			culture_cells[i] = 0;
-
-		/* 4.3. Cell movements */
-#pragma omp parallel for if (num_cells > threshold) \
-		schedule(static) reduction(max \
-									: max_age)
-		for (i = 0; i < num_cells; i++)
+		if (num_cells < rows * columns)
 		{
-			cells[i].age++;
-			// Statistics: Max age of a cell in the simulation history
-			if (cells[i].age > max_age)
-				max_age = cells[i].age;
-			
-			// Consume energy to move
-			cells[i].storage -= 1.0f;
-
-			/* 4.3.2. Choose movement direction */
-
-			float prob = (float)erand48(cells[i].random_seq);
-			if (prob < cells[i].choose_mov[0])
+			/* 4.3. Cell movements */
+			#pragma omp parallel for schedule(guided) \
+			reduction(max:max_age)
+			for (i = 0; i < num_cells; i++)
 			{
-				// Turn left (90 degrees)
-				float tmp = cells[i].mov_col;
-				cells[i].mov_col = cells[i].mov_row;
-				cells[i].mov_row = -tmp;
-			}
-			else if (prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1])
+				cells[i].age++;
+				// Statistics: Max age of a cell in the simulation history
+				if (cells[i].age > max_age)
+					max_age = cells[i].age;
+				
+				// Consume energy to move
+				cells[i].storage -= 1.0f;
+
+				/* 4.3.2. Choose movement direction */
+
+				float prob = (float)erand48(cells[i].random_seq);
+				if (prob < cells[i].choose_mov[0])
+				{
+					// Turn left (90 degrees)
+					float tmp = cells[i].mov_col;
+					cells[i].mov_col = cells[i].mov_row;
+					cells[i].mov_row = -tmp;
+				}
+				else if (prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1])
+				{
+					// Turn right (90 degrees)
+					float tmp = cells[i].mov_row;
+					cells[i].mov_row = cells[i].mov_col;
+					cells[i].mov_col = -tmp;
+				}
+				// else do not change the direction
+
+				/* 4.3.3. Update position moving in the choosen direction*/
+
+				#pragma omp atomic
+				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)--;
+
+				cells[i].pos_row += cells[i].mov_row;
+				cells[i].pos_col += cells[i].mov_col;
+				// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+				if (cells[i].pos_row < 0)
+					cells[i].pos_row += rows;
+				if (cells[i].pos_row >= rows)	// These can't be elsed.
+					cells[i].pos_row -= rows;
+				if (cells[i].pos_col < 0)
+					cells[i].pos_col += columns;
+				if (cells[i].pos_col >= columns)// These can't be elsed.
+					cells[i].pos_col -= columns;
+
+				/* 4.3.4. Annotate that there is one more cell in this culture position */
+				#pragma omp atomic
+				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
+				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+				food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
+			} // End cell movements
+		}
+		else
+		{
+			#pragma omp parallel for default(none) \
+			shared(rows, columns, culture_cells) \
+			schedule(static)
+			for (i = 0; i < rows * columns; i++)
+				culture_cells[i] = 0;
+
+			/* 4.3. Cell movements */
+			#pragma omp parallel for schedule(guided) \
+			reduction(max:max_age)
+			for (i = 0; i < num_cells; i++)
 			{
-				// Turn right (90 degrees)
-				float tmp = cells[i].mov_row;
-				cells[i].mov_row = cells[i].mov_col;
-				cells[i].mov_col = -tmp;
+				cells[i].age++;
+				// Statistics: Max age of a cell in the simulation history
+				if (cells[i].age > max_age)
+					max_age = cells[i].age;
+				
+				// Consume energy to move
+				cells[i].storage -= 1.0f;
+
+				/* 4.3.2. Choose movement direction */
+
+				float prob = (float)erand48(cells[i].random_seq);
+				if (prob < cells[i].choose_mov[0])
+				{
+					// Turn left (90 degrees)
+					float tmp = cells[i].mov_col;
+					cells[i].mov_col = cells[i].mov_row;
+					cells[i].mov_row = -tmp;
+				}
+				else if (prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1])
+				{
+					// Turn right (90 degrees)
+					float tmp = cells[i].mov_row;
+					cells[i].mov_row = cells[i].mov_col;
+					cells[i].mov_col = -tmp;
+				}
+				// else do not change the direction
+
+				/* 4.3.3. Update position moving in the choosen direction*/
+				cells[i].pos_row += cells[i].mov_row;
+				cells[i].pos_col += cells[i].mov_col;
+				// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+				if (cells[i].pos_row < 0)
+					cells[i].pos_row += rows;
+				if (cells[i].pos_row >= rows)	// These can't be elsed.
+					cells[i].pos_row -= rows;
+				if (cells[i].pos_col < 0)
+					cells[i].pos_col += columns;
+				if (cells[i].pos_col >= columns)// These can't be elsed.
+					cells[i].pos_col -= columns;
+
+				/* 4.3.4. Annotate that there is one more cell in this culture position */
+				#pragma omp atomic
+				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
+				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+				food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
 			}
-			// else do not change the direction
-
-			/* 4.3.3. Update position moving in the choosen direction*/
-			cells[i].pos_row += cells[i].mov_row;
-			cells[i].pos_col += cells[i].mov_col;
-			// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
-			if (cells[i].pos_row < 0)
-				cells[i].pos_row += rows;
-			if (cells[i].pos_row >= rows)	// These can't be elsed.
-				cells[i].pos_row -= rows;
-			if (cells[i].pos_col < 0)
-				cells[i].pos_col += columns;
-			if (cells[i].pos_col >= columns)// These can't be elsed.
-				cells[i].pos_col -= columns;
-
-/* 4.3.4. Annotate that there is one more cell in this culture position */
-#pragma omp atomic
-			accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
-			/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-			food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
-		} // End cell movements
+		}
 
 		/* 4.4. Cell actions */
-		#pragma omp parallel for if (num_cells > threshold)\
-		schedule(static)
+		#pragma omp parallel for schedule(static)
 		for (i = 0; i < num_cells; i++)
 		{
 			/* 4.4.1. Food harvesting */
@@ -521,11 +584,10 @@ int main(int argc, char *argv[])
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
 
 		/* 4.8. Decrease non-harvested food */
-#pragma omp parallel for default(none) \
-	shared(rows, columns, culture)     \
-		schedule(guided)               \
-			reduction(max              \
-					  : current_max_food)
+		#pragma omp parallel for default(none) \
+		shared(rows, columns, culture) \
+		schedule(guided) \
+		reduction(max:current_max_food)
 		for (i = 0; i < rows * columns; i++)
 		{
 			culture[i] *= 0.95f; // Reduce 5%
@@ -584,23 +646,186 @@ int main(int argc, char *argv[])
 			}
 		}
 
-/* 4.2. Prepare ancillary data structures */
-/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-#pragma omp parallel for default(none)   \
-	shared(rows, columns, culture_cells) \
-		schedule(static)
-		for (i = 0; i < rows * columns; i++)
-			culture_cells[i] = 0;
-
-		/* 4.3. Cell movements */
 		int step_dead_cells = 0;
-#pragma omp parallel for if (num_cells > threshold) \
-		schedule(guided) reduction(+ \
-									 : step_dead_cells) reduction(max \
-																		: max_age)
-		for (i = 0; i < num_cells; i++)
+		int step_new_cells = 0;
+		if (num_cells < rows * columns)
 		{
-			if (cells[i].alive)
+			/* 4.3. Cell movements */
+			#pragma omp parallel for schedule(guided) \
+			reduction(+:step_dead_cells) reduction(max:max_age)
+			for (i = 0; i < num_cells; i++)
+			{
+				if (cells[i].alive)
+				{
+					cells[i].age++;
+					// Statistics: Max age of a cell in the simulation history
+					if (cells[i].age > max_age)
+						max_age = cells[i].age;
+
+					/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
+					if (cells[i].storage < 0.1f)
+					{
+						// Cell has died
+						cells[i].alive = false;
+						step_dead_cells++;
+
+						#pragma omp atomic
+						accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)--;
+						continue;
+					}
+					if (cells[i].storage < 1.0f)
+					{
+						// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
+						cells[i].storage -= 0.2f;
+					}
+					else
+					{
+						// Consume energy to move
+						cells[i].storage -= 1.0f;
+
+						/* 4.3.2. Choose movement direction */
+
+						float prob = (float)erand48(cells[i].random_seq);
+						if (prob < cells[i].choose_mov[0])
+						{
+							// Turn left (90 degrees)
+							float tmp = cells[i].mov_col;
+							cells[i].mov_col = cells[i].mov_row;
+							cells[i].mov_row = -tmp;
+						}
+						else if (prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1])
+						{
+							// Turn right (90 degrees)
+							float tmp = cells[i].mov_row;
+							cells[i].mov_row = cells[i].mov_col;
+							cells[i].mov_col = -tmp;
+						}
+						// else do not change the direction
+
+						/* 4.3.3. Update position moving in the choosen direction*/					
+						#pragma omp atomic
+						accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)--;
+
+						cells[i].pos_row += cells[i].mov_row;
+						cells[i].pos_col += cells[i].mov_col;
+						// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+						if (cells[i].pos_row < 0)
+							cells[i].pos_row += rows;
+						if (cells[i].pos_row >= rows)	// These can't be elsed.
+							cells[i].pos_row -= rows;
+						if (cells[i].pos_col < 0)
+							cells[i].pos_col += columns;
+						if (cells[i].pos_col >= columns)// These can't be elsed.
+							cells[i].pos_col -= columns;
+
+						/* 4.3.4. Annotate that there is one more cell in this culture position */
+						#pragma omp atomic
+						accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
+					}
+
+					/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+					food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
+				}
+			} // End cell movements
+
+			/* 4.4. Cell actions */
+			// Space for the list of new cells (maximum number of new cells is num_cells)
+
+			int free_position = 0;
+			step_new_cells = 0;
+			for (i = 0; i < num_cells; i++)
+			{
+				if (cells[i].alive)
+				{
+					/* 4.4.1. Food harvesting */
+					float my_food = food_to_share[i] / accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
+					cells[i].storage += my_food;
+
+					/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
+					if (cells[i].age > 30 && cells[i].storage > 20)
+					{
+						// Split: Create new cell
+						step_new_cells++;
+
+						// Split energy stored and update age in both cells
+						cells[i].storage /= 2.0f;
+						cells[i].age = 1;
+
+						// New cell is a copy of parent cell
+						new_cells[step_new_cells - 1] = cells[i];
+
+						// Random seed for the new cell, obtained using the parent random sequence
+						new_cells[step_new_cells - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
+						new_cells[step_new_cells - 1].random_seq[1] = (unsigned short)nrand48(cells[i].random_seq);
+						new_cells[step_new_cells - 1].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
+
+						// Both cells start in random directions
+						//cell_new_direction( &cells[i] );
+						float angle = (float)(2 * M_PI * erand48(cells[i].random_seq));
+						cells[i].mov_row = sinf(angle);
+						cells[i].mov_col = cosf(angle);
+						cell_mutation(&cells[i]);
+
+						//cell_new_direction( &new_cells[ step_new_cells-1 ] );
+						angle = (float)(2 * M_PI * erand48(new_cells[step_new_cells - 1].random_seq));
+						new_cells[step_new_cells - 1].mov_row = sinf(angle);
+						new_cells[step_new_cells - 1].mov_col = cosf(angle);
+						cell_mutation(&new_cells[step_new_cells - 1]);
+					}
+					// 4.5
+					accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
+
+					// 4.6
+					if (free_position != i)
+					{
+						cells[free_position] = cells[i];
+					}
+					free_position++;
+				}
+
+			} // End cell actions
+
+			num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells;
+
+			if (num_cells_alive > num_cells) {
+				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
+				food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
+				cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
+			}
+
+			/* 4.6. Clean dead cells from the original list */
+			// 4.6.1. Move alive cells to the left to substitute dead cells
+			// 4.6.2. Reduce the storage space of the list to the current number of cells
+			num_cells = free_position;
+
+			/* 4.7. Join cell lists: Old and new cells list */
+			if (step_new_cells > 0)
+			{
+				#pragma omp parallel for default(none) \
+				shared(step_new_cells, cells, new_cells, num_cells, culture_cells, columns) \
+				schedule(static)
+				for (j = 0; j < step_new_cells; j++)
+				{
+					cells[num_cells + j] = new_cells[j];
+					#pragma omp atomic
+					accessMat(culture_cells, new_cells[j].pos_row, new_cells[j].pos_col)++;
+				}
+				num_cells += step_new_cells;
+			}
+		}
+		else
+		{
+			// 4.2
+			#pragma omp parallel for default(none)   \
+			shared(rows, columns, culture_cells) \
+			schedule(static)
+			for (i = 0; i < rows * columns; i++)
+				culture_cells[i] = 0;
+
+			/* 4.3. Cell movements */
+			#pragma omp parallel for schedule(guided) \
+			reduction(+:step_dead_cells) reduction(max:max_age)
+			for (i = 0; i < num_cells; i++)
 			{
 				cells[i].age++;
 				// Statistics: Max age of a cell in the simulation history
@@ -658,102 +883,104 @@ int main(int argc, char *argv[])
 						cells[i].pos_col -= columns;
 				}
 
-/* 4.3.4. Annotate that there is one more cell in this culture position */
-#pragma omp atomic
+				/* 4.3.4. Annotate that there is one more cell in this culture position */
+				#pragma omp atomic
 				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-				food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
-			}
-		} // End cell movements
+				food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);				
+			} // End cell movements
 
-		/* 4.4. Cell actions */
-		// Space for the list of new cells (maximum number of new cells is num_cells)
-
-		int free_position = 0;
-		int step_new_cells = 0;
-		for (i = 0; i < num_cells; i++)
-		{
-			if (cells[i].alive)
+			/* 4.4. Cell actions */
+			step_new_cells = 0;
+			#pragma omp parallel for
+			for (i = 0; i < num_cells; i++)
 			{
-				/* 4.4.1. Food harvesting */
-				float my_food = food_to_share[i] / accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
-				cells[i].storage += my_food;
-
-				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
-				if (cells[i].age > 30 && cells[i].storage > 20)
+				if (cells[i].alive)
 				{
-					// Split: Create new cell
-					step_new_cells++;
+					/* 4.4.1. Food harvesting */
+					float my_food = food_to_share[i] / accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
+					cells[i].storage += my_food;
 
-					// Split energy stored and update age in both cells
-					cells[i].storage /= 2.0f;
-					cells[i].age = 1;
+					/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
+					if (cells[i].age > 30 && cells[i].storage > 20)
+					{
+						// Split: Create new cell
+						int new = 0;
+						#pragma omp critical
+						new = step_new_cells++;
 
-					// New cell is a copy of parent cell
-					new_cells[step_new_cells - 1] = cells[i];
+						// Split energy stored and update age in both cells
+						cells[i].storage /= 2.0f;
+						cells[i].age = 1;
 
-					// Random seed for the new cell, obtained using the parent random sequence
-					new_cells[step_new_cells - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
-					new_cells[step_new_cells - 1].random_seq[1] = (unsigned short)nrand48(cells[i].random_seq);
-					new_cells[step_new_cells - 1].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
+						// New cell is a copy of parent cell
+						new_cells[new] = cells[i];
 
-					// Both cells start in random directions
-					//cell_new_direction( &cells[i] );
-					float angle = (float)(2 * M_PI * erand48(cells[i].random_seq));
-					cells[i].mov_row = sinf(angle);
-					cells[i].mov_col = cosf(angle);
+						// Random seed for the new cell, obtained using the parent random sequence
+						new_cells[new].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
+						new_cells[new].random_seq[1] = (unsigned short)nrand48(cells[i].random_seq);
+						new_cells[new].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
 
-					//cell_new_direction( &new_cells[ step_new_cells-1 ] );
-					angle = (float)(2 * M_PI * erand48(new_cells[step_new_cells - 1].random_seq));
-					new_cells[step_new_cells - 1].mov_row = sinf(angle);
-					new_cells[step_new_cells - 1].mov_col = cosf(angle);
+						// Both cells start in random directions
+						//cell_new_direction( &cells[i] );
+						float angle = (float)(2 * M_PI * erand48(cells[i].random_seq));
+						cells[i].mov_row = sinf(angle);
+						cells[i].mov_col = cosf(angle);
+						cell_mutation(&cells[i]);
 
-					// Mutations of the movement genes in both cells
-					cell_mutation(&cells[i]);
-					cell_mutation(&new_cells[step_new_cells - 1]);
+						//cell_new_direction( &new_cells[ step_new_cells-1 ] );
+						angle = (float)(2 * M_PI * erand48(new_cells[new].random_seq));
+						new_cells[new].mov_row = sinf(angle);
+						new_cells[new].mov_col = cosf(angle);
+						cell_mutation(&new_cells[new]);
+					}
+					// 4.5
+					accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
 				}
-				// 4.5
-				accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
 
-				// 4.6
-				if (free_position != i)
-				{
-					cells[free_position] = cells[i];
-				}
-				free_position++;
+			} // End cell actions
+
+			num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells;
+
+			if (num_cells_alive > num_cells) {
+				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
+				food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
+				cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
 			}
 
-		} // End cell actions
-		num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells;
+			/* 4.6. Clean dead cells from the original list */
+			// 4.6.1. Move alive cells to the left to substitute dead cells
+			int free_position = 0;
+			for( i=0; i<num_cells; i++ )
+			{
+				if ( cells[i].alive )
+				{
+					if ( free_position != i ) {
+						cells[free_position] = cells[i];
+					}
+					free_position ++;
+				}
+			}
+			// 4.6.2. Reduce the storage space of the list to the current number of cells
+			num_cells = free_position;
 
-		if (num_cells_alive > num_cells) {
-			new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
-			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
-			cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
-		}
-
-		/* 4.6. Clean dead cells from the original list */
-		// 4.6.1. Move alive cells to the left to substitute dead cells
-		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		num_cells = free_position;
-
-		/* 4.7. Join cell lists: Old and new cells list */
-		if (step_new_cells > 0)
-		{
-#pragma omp parallel for default(none)                  \
-	shared(step_new_cells, cells, new_cells, num_cells) \
-		schedule(static)
-			for (j = 0; j < step_new_cells; j++)
-				cells[num_cells + j] = new_cells[j];
-			num_cells += step_new_cells;
+			/* 4.7. Join cell lists: Old and new cells list */
+			if (step_new_cells > 0)
+			{
+				#pragma omp parallel for default(none) \
+				shared(step_new_cells, cells, new_cells, num_cells) \
+				schedule(static)
+				for (j = 0; j < step_new_cells; j++)
+					cells[num_cells + j] = new_cells[j];
+				num_cells += step_new_cells;
+			}
 		}
 
 		/* 4.8. Decrease non-harvested food */
-#pragma omp parallel for default(none) \
-	shared(rows, columns, culture)     \
-		schedule(guided)               \
-			reduction(max              \
-					  : current_max_food)
+		#pragma omp parallel for default(none) \
+		shared(rows, columns, culture) \
+		schedule(guided) \
+		reduction(max :current_max_food)
 		for (i = 0; i < rows * columns; i++)
 		{
 			culture[i] *= 0.95f; // Reduce 5%
