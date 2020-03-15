@@ -15,6 +15,7 @@
 #include <float.h>
 #include <stdbool.h>
 #include <cputils.h>
+#include <omp.h>
 
 /* Structure to store data of a cell */
 typedef struct
@@ -46,6 +47,7 @@ typedef struct
  *
  */
 #define accessMat(arr, exp1, exp2) arr[(int)(exp1)*columns + (int)(exp2)]
+#define M_TAU 6.283185307179586
 
 /*
  * Function: Choose a new direction of movement for a cell
@@ -53,7 +55,7 @@ typedef struct
  */
 void cell_new_direction(Cell *cell)
 {
-	float angle = (float)(2 * M_PI * erand48(cell->random_seq));
+	float angle = (float)(M_TAU * erand48(cell->random_seq));
 	cell->mov_row = sinf(angle);
 	cell->mov_col = cosf(angle);
 }
@@ -96,10 +98,6 @@ void cell_mutation(Cell *cell)
 		mutation_value = cell->choose_mov[1] * mutation_percentage;
 		cell->choose_mov[1] -= mutation_value;
 		cell->choose_mov[2] += mutation_value;
-		break;
-	default:
-		fprintf(stderr, "Error: Imposible type of mutation\n");
-		exit(EXIT_FAILURE);
 	}
 	/* 4. Correct potential precision problems */
 	cell->choose_mov[2] = 1.0f - cell->choose_mov[1] - cell->choose_mov[0];
@@ -140,16 +138,21 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 
 			int t;
 			int counter = 0;
-			for( t=0; t<num_cells; t++ ) {
+			for (t = 0; t < num_cells; t++)
+			{
 				int row = (int)(cells[t].pos_row);
 				int col = (int)(cells[t].pos_col);
-				if ( cells[t].alive && row == i && col == j ) {
-					counter ++;
+				if (cells[t].alive && row == i && col == j)
+				{
+					counter++;
 				}
 			}
-			if ( counter > 9 ) printf("(M)" );
-			else if ( counter > 0 ) printf("(%1d)", counter );
-			else printf(" %c ", symbol );
+			if (counter > 9)
+				printf("(M)");
+			else if (counter > 0)
+				printf("(%1d)", counter);
+			else
+				printf(" %c ", symbol);
 		}
 		printf("|\n");
 	}
@@ -336,15 +339,13 @@ int main(int argc, char *argv[])
 	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
 
 #pragma omp parallel for default(none) \
-	shared(rows, columns, culture, culture_cells)     \
+	shared(rows, columns, culture)     \
 		schedule(static)
 	for (i = 0; i < rows * columns; i++)
-	{
 		culture[i] = 0.0f;
-		culture_cells[i] = 0;
-	}
 
-#pragma omp parallel for default(shared) schedule(guided)
+#pragma omp parallel for \
+	default(shared) schedule(static)
 	for (i = 0; i < num_cells; i++)
 	{
 		cells[i].alive = true;
@@ -355,9 +356,6 @@ int main(int argc, char *argv[])
 		// Initial position: Anywhere in the culture arena
 		cells[i].pos_row = (float)(rows * erand48(cells[i].random_seq));
 		cells[i].pos_col = (float)(columns * erand48(cells[i].random_seq));
-
-		#pragma omp critical
-		accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 		// Movement direction: Unity vector in a random direction
 		cell_new_direction(&cells[i]);
 		// Movement genes: Probabilities of advancing or changing direction: The sum should be 1.00
@@ -403,7 +401,7 @@ int main(int argc, char *argv[])
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
 
-	double rand41[3 * max_sources];
+	float rand41[3 * max_sources];
 
 	for (iter = 0; iter < 10 && current_max_food <= max_food; iter++)
 	{
@@ -411,16 +409,18 @@ int main(int argc, char *argv[])
 		// Across the whole culture
 		for (i = 0; i < num_new_sources; i++)
 		{
-			rand41[3 * i] = erand48(food_random_seq);
-			rand41[3 * i + 1] = erand48(food_random_seq);
-			rand41[3 * i + 2] = erand48(food_random_seq);
+			int index = 3 * i;
+			rand41[index] = (float)erand48(food_random_seq);
+			rand41[index + 1] = (float)erand48(food_random_seq);
+			rand41[index + 2] = (float)erand48(food_random_seq);
 		}
 
 		for (i = 0; i < num_new_sources; i++)
 		{
-			int row = (int)(rows * rand41[3 * i]);
-			int col = (int)(columns * rand41[3 * i + 1]);
-			float food = (float)(food_level * rand41[3 * i + 2]);
+			int index = 3 * i;
+			int row = (int)(rows * rand41[index]);
+			int col = (int)(columns * rand41[index + 1]);
+			float food = (float)(food_level * rand41[index + 2]);
 			accessMat( culture, row, col ) += food;
 		}
 		// In the special food spot
@@ -428,30 +428,36 @@ int main(int argc, char *argv[])
 		{
 			for (i = 0; i < num_new_sources_spot; i++)
 			{
-				rand41[3 * i] = erand48(food_spot_random_seq);
-				rand41[3 * i + 1] = erand48(food_spot_random_seq);
-				rand41[3 * i + 2] = erand48(food_spot_random_seq);
+				int index = 3 * i;
+				rand41[index] = (float)erand48(food_spot_random_seq);
+				rand41[index + 1] = (float)erand48(food_spot_random_seq);
+				rand41[index + 2] = (float)erand48(food_spot_random_seq);
 			}
 
 			for (i = 0; i < num_new_sources_spot; i++)
 			{
-				int row = food_spot_row + (int)(food_spot_size_rows * rand41[3 * i]);
-				int col = food_spot_col + (int)(food_spot_size_cols * rand41[3 * i + 1]);
-				float food = (float)(food_spot_level * rand41[3 * i + 2]);
+				int index = 3 * i;
+				int row = food_spot_row + (int)(food_spot_size_rows * rand41[index]);
+				int col = food_spot_col + (int)(food_spot_size_cols * rand41[index + 1]);
+				float food = (float)(food_spot_level * rand41[index + 2]);
 				accessMat( culture, row, col ) += food;
 			}
 		}
 
+/* 4.2. Prepare ancillary data structures */
+/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
+#pragma omp parallel for default(none)   \
+	shared(rows, columns, culture_cells) \
+		schedule(static)
+		for (i = 0; i < rows * columns; i++)
+			culture_cells[i] = 0;
+
 		/* 4.3. Cell movements */
-#pragma omp parallel for schedule(guided) reduction(max \
-														: max_age)
+#pragma omp parallel for  \
+		schedule(static)
 		for (i = 0; i < num_cells; i++)
 		{
-			cells[i].age++;
-			// Statistics: Max age of a cell in the simulation history
-			if (cells[i].age > max_age)
-				max_age = cells[i].age;
-			
+			cells[i].age++;			
 			// Consume energy to move
 			cells[i].storage -= 1.0f;
 
@@ -475,9 +481,6 @@ int main(int argc, char *argv[])
 			// else do not change the direction
 
 			/* 4.3.3. Update position moving in the choosen direction*/
-			#pragma omp atomic
-			accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)--;
-
 			cells[i].pos_row += cells[i].mov_row;
 			cells[i].pos_col += cells[i].mov_col;
 			// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
@@ -490,20 +493,20 @@ int main(int argc, char *argv[])
 			if (cells[i].pos_col >= columns)// These can't be elsed.
 				cells[i].pos_col -= columns;
 
-			/* 4.3.4. Annotate that there is one more cell in this culture position */
-			#pragma omp atomic
+/* 4.3.4. Annotate that there is one more cell in this culture position */
+#pragma omp atomic
 			accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 			/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 			food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
 		} // End cell movements
 
 		/* 4.4. Cell actions */
-		#pragma omp parallel for schedule(static)
+		#pragma omp parallel for \
+		schedule(static)
 		for (i = 0; i < num_cells; i++)
 		{
 			/* 4.4.1. Food harvesting */
-			float my_food = food_to_share[i] / accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
-			cells[i].storage += my_food;
+			cells[i].storage += food_to_share[i] / accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
 
 			// 4.5
 			accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
@@ -526,9 +529,6 @@ int main(int argc, char *argv[])
 			if (culture[i] > current_max_food)
 				current_max_food = culture[i];
 		}
-
-		/* 4.9. Statistics */		
-		sim_stat.history_max_age = max_age;
 		// Statistics: Max food
 		if (current_max_food > sim_stat.history_max_food)
 			sim_stat.history_max_food = current_max_food;
@@ -547,16 +547,18 @@ int main(int argc, char *argv[])
 		// Across the whole culture
 		for (i = 0; i < num_new_sources; i++)
 		{
-			rand41[3 * i] = erand48(food_random_seq);
-			rand41[3 * i + 1] = erand48(food_random_seq);
-			rand41[3 * i + 2] = erand48(food_random_seq);
+			int index = 3*i;
+			rand41[index] = (float)erand48(food_random_seq);
+			rand41[index + 1] = (float)erand48(food_random_seq);
+			rand41[index + 2] = (float)erand48(food_random_seq);
 		}
 
 		for (i = 0; i < num_new_sources; i++)
 		{
-			int row = (int)(rows * rand41[3 * i]);
-			int col = (int)(columns * rand41[3 * i + 1]);
-			float food = (float)(food_level * rand41[3 * i + 2]);
+			int index = 3*i;
+			int row = (int)(rows * rand41[index]);
+			int col = (int)(columns * rand41[index + 1]);
+			float food = (float)(food_level * rand41[index + 2]);
 			accessMat( culture, row, col ) += food;
 		}
 		// In the special food spot
@@ -564,41 +566,48 @@ int main(int argc, char *argv[])
 		{
 			for (i = 0; i < num_new_sources_spot; i++)
 			{
-				rand41[3 * i] = erand48(food_spot_random_seq);
-				rand41[3 * i + 1] = erand48(food_spot_random_seq);
-				rand41[3 * i + 2] = erand48(food_spot_random_seq);
+				int index = 3*i;
+				rand41[index] = (float)erand48(food_spot_random_seq);
+				rand41[index + 1] = (float)erand48(food_spot_random_seq);
+				rand41[index + 2] = (float)erand48(food_spot_random_seq);
 			}
 
 			for (i = 0; i < num_new_sources_spot; i++)
 			{
-				int row = food_spot_row + (int)(food_spot_size_rows * rand41[3 * i]);
-				int col = food_spot_col + (int)(food_spot_size_cols * rand41[3 * i + 1]);
-				float food = (float)(food_spot_level * rand41[3 * i + 2]);
+				int index = 3*i;
+				int row = food_spot_row + (int)(food_spot_size_rows * rand41[index]);
+				int col = food_spot_col + (int)(food_spot_size_cols * rand41[index + 1]);
+				float food = (float)(food_spot_level * rand41[index + 2]);
 				accessMat( culture, row, col ) += food;
 			}
 		}
 
+/* 4.2. Prepare ancillary data structures */
+/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
+#pragma omp parallel for default(none)   \
+	shared(rows, columns, culture_cells) \
+		schedule(static)
+		for (i = 0; i < rows * columns; i++)
+			culture_cells[i] = 0;
+
 		/* 4.3. Cell movements */
 		int step_dead_cells = 0;
-#pragma omp parallel for schedule(guided) reduction(+ \
-													 : step_dead_cells) reduction(max \
-																					: max_age)
+#pragma omp parallel for  \
+		schedule(guided) reduction(+ \
+									 : step_dead_cells) reduction(max \
+																		: max_age)
 		for (i = 0; i < num_cells; i++)
 		{
 			cells[i].age++;
-			// Statistics: Max age of a cell in the simulation history
-			if (cells[i].age > max_age)
-				max_age = cells[i].age;
-
 			/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
 			if (cells[i].storage < 0.1f)
 			{
 				// Cell has died
 				cells[i].alive = false;
 				step_dead_cells++;
-
-				#pragma omp atomic
-				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)--;
+				// Statistics: Max age of a cell in the simulation history
+				if (cells[i].age > max_age)
+					max_age = cells[i].age;
 				continue;
 			}
 			if (cells[i].storage < 1.0f)
@@ -631,10 +640,6 @@ int main(int argc, char *argv[])
 				// else do not change the direction
 
 				/* 4.3.3. Update position moving in the choosen direction*/
-
-				#pragma omp atomic
-				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)--;
-
 				cells[i].pos_row += cells[i].mov_row;
 				cells[i].pos_col += cells[i].mov_col;
 				// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
@@ -646,12 +651,11 @@ int main(int argc, char *argv[])
 					cells[i].pos_col += columns;
 				if (cells[i].pos_col >= columns)// These can't be elsed.
 					cells[i].pos_col -= columns;
-
-				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				#pragma omp atomic
-				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 			}
 
+/* 4.3.4. Annotate that there is one more cell in this culture position */
+#pragma omp atomic
+			accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 			/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 			food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
 		} // End cell movements
@@ -666,15 +670,15 @@ int main(int argc, char *argv[])
 			if (cells[i].alive)
 			{
 				/* 4.4.1. Food harvesting */
-				float my_food = food_to_share[i] / accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
-				cells[i].storage += my_food;
+				cells[i].storage += food_to_share[i] / accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
 
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
 				if (cells[i].age > 30 && cells[i].storage > 20)
 				{
+					if (cells[i].age > max_age)
+						max_age = cells[i].age;
 					// Split: Create new cell
 					step_new_cells++;
-					accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col)++;
 
 					// Split energy stored and update age in both cells
 					cells[i].storage /= 2.0f;
@@ -690,17 +694,15 @@ int main(int argc, char *argv[])
 
 					// Both cells start in random directions
 					//cell_new_direction( &cells[i] );
-					float angle = (float)(2 * M_PI * erand48(cells[i].random_seq));
+					float angle = (float)(M_TAU * erand48(cells[i].random_seq));
 					cells[i].mov_row = sinf(angle);
 					cells[i].mov_col = cosf(angle);
+					cell_mutation(&cells[i]);
 
 					//cell_new_direction( &new_cells[ step_new_cells-1 ] );
-					angle = (float)(2 * M_PI * erand48(new_cells[step_new_cells - 1].random_seq));
+					angle = (float)(M_TAU * erand48(new_cells[step_new_cells - 1].random_seq));
 					new_cells[step_new_cells - 1].mov_row = sinf(angle);
 					new_cells[step_new_cells - 1].mov_col = cosf(angle);
-
-					// Mutations of the movement genes in both cells
-					cell_mutation(&cells[i]);
 					cell_mutation(&new_cells[step_new_cells - 1]);
 				}
 				// 4.5
@@ -753,7 +755,7 @@ int main(int argc, char *argv[])
 		}
 
 		/* 4.9. Statistics */		
-		sim_stat.history_max_age = max_age;		
+		sim_stat.history_max_age = max_age;
 		sim_stat.history_total_cells += step_new_cells;
 		// Statistics: Max food
 		if (current_max_food > sim_stat.history_max_food)
@@ -774,6 +776,14 @@ int main(int argc, char *argv[])
 		print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
 #endif // DEBUG
 	}
+
+	#pragma omp parallel for \
+	reduction(max:max_age) \
+	schedule(guided)
+	for (i = 0; i < num_cells; i++)
+		if (cells[i].age > max_age)
+			max_age = cells[i].age;
+	sim_stat.history_max_age = max_age;
 
 /*
 You were expecting more code.

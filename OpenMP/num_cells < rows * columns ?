@@ -1,7 +1,0 @@
-num_cells < rows * columns ?
-3.61
-23.00
-29.57
-44.09
-
-Paralelizando 4.4 si num_cells > rosw * columns

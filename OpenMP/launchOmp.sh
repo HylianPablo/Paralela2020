@@ -1,1 +1,1 @@
-python2 ./client -t 8 -q openmplb -u g110 -x A7u2nExB viernesDeLaJungla.c
+python2 ../lb/client -q openmplb -u g110 -x A7u2nExBe viernesDeLaJungla.c 
