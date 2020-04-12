@@ -344,6 +344,14 @@ int main(int argc, char *argv[]) {
 
 	int nprocs;
 	MPI_Comm_size( MPI_COMM_WORLD, &nprocs );
+	int fraction = (rows*columns)/nprocs;
+  	int my_size;
+  	if(rank == nprocs -1)
+   		my_size = fraction + (rows*columns)%nprocs;
+  	else
+    	my_size = fraction;
+  // 2.2. Calcular donde empieza cada proceso con respecto al hipotetico array global
+  int my_begin = fraction*rank ;
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
@@ -619,11 +627,12 @@ int main(int argc, char *argv[]) {
 		update_time(time4_8);
 		current_max_food = 0.0f;
 		int value95;
-		for( i=0; i<(rows * columns/nprocs)*(rank+1); i++ ){
-				culture_cells[i] = 0.0f;
-				culture[i]*= 0.95f; // Reduce 5%
-				if ( culture[i] > current_max_food ) 
-					current_max_food = culture[i];
+		for(i=0;i<my_size; i++ ){
+			//(rows*columns/nprocs) * rank+1
+				culture_cells[i+my_begin] = 0.0f;
+				culture[i+my_begin]*= 0.95f; // Reduce 5%
+				if ( culture[i+my_begin] > current_max_food ) 
+					current_max_food = culture[i+my_begin];
 			}
 		update_time(time4_8);
 
