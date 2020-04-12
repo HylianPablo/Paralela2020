@@ -575,7 +575,6 @@ int main(int argc, char *argv[]) {
 		current_max_food = 0.0f;
 		int value95;
 		for( i=0; i<(rows * columns/nprocs)*(rank+1); i++ ){
-				printf("Mi rango es %d",rank);
 				culture_cells[i] = 0.0f;
 				culture[i]*= 0.95f; // Reduce 5%
 				if ( culture[i] > current_max_food ) 
