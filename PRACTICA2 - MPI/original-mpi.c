@@ -328,7 +328,6 @@ int main(int argc, char *argv[]) {
 	for( i=0; i<rows; i++ )
 		for( j=0; j<columns; j++ ) 
 			accessMat( culture, i, j ) = 0.0;
-			accessMat( culture_cells, i, j ) = 0;
 
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
@@ -373,53 +372,35 @@ int main(int argc, char *argv[]) {
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
 	int iter;
-	int num_new_sources = (int)(rows * columns * food_density);
-	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
-	int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
+	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
+		int step_new_cells = 0;
+		int step_dead_cells = 0;
 
-	double rand41[3 * max_sources];
-
-	for (iter = 0; iter < max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++)
-
-	{
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		for (i = 0; i < num_new_sources; i++)
-		{
-			rand41[3 * i] = erand48(food_random_seq);
-			rand41[3 * i + 1] = erand48(food_random_seq);
-			rand41[3 * i + 2] = erand48(food_random_seq);
-		}
-
-		for (i = 0; i < num_new_sources; i++)
-		{
-			int row = (int)(rows * rand41[3 * i]);
-			int col = (int)(columns * rand41[3 * i + 1]);
-			float food = (float)(food_level * rand41[3 * i + 2]);
-			accessMat( culture, row, col ) += food;
+		int num_new_sources = (int)(rows * columns * food_density);
+		for (i=0; i<num_new_sources; i++) {
+			int row = (int)(rows * erand48( food_random_seq ));
+			int col = (int)(columns * erand48( food_random_seq ));
+			float food = (float)( food_level * erand48( food_random_seq ));
+			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
 		// In the special food spot
-		if (food_spot_active)
-		{
-			for (i = 0; i < num_new_sources_spot; i++)
-			{
-				rand41[3 * i] = erand48(food_spot_random_seq);
-				rand41[3 * i + 1] = erand48(food_spot_random_seq);
-				rand41[3 * i + 2] = erand48(food_spot_random_seq);
-			}
-
-			for (i = 0; i < num_new_sources_spot; i++)
-			{
-				int row = food_spot_row + (int)(food_spot_size_rows * rand41[3 * i]);
-				int col = food_spot_col + (int)(food_spot_size_cols * rand41[3 * i + 1]);
-				float food = (float)(food_spot_level * rand41[3 * i + 2]);
-				accessMat( culture, row, col ) += food;
+		if ( food_spot_active ) {
+			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
+			for (i=0; i<num_new_sources; i++) {
+				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
+				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
+				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
+				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			}
 		}
 
 		/* 4.2. Prepare ancillary data structures */
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-		
+		for( i=0; i<rows; i++ )
+			for( j=0; j<columns; j++ ) 
+				accessMat( culture_cells, i, j ) = 0.0f;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
 		if ( culture == NULL || culture_cells == NULL ) {
@@ -428,7 +409,6 @@ int main(int argc, char *argv[]) {
 		}
 
 		/* 4.3. Cell movements */
-		int step_dead_cells = 0;
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
@@ -492,7 +472,6 @@ int main(int argc, char *argv[]) {
 			MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
 		}
 
-		int step_new_cells = 0;
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
@@ -573,7 +552,6 @@ int main(int argc, char *argv[]) {
 		current_max_food = 0.0f;
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
-				accessMat( culture_cells, i, j ) = 0.0f;
 				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
 				if ( accessMat( culture, i, j ) > current_max_food ) 
 					current_max_food = accessMat( culture, i, j );
