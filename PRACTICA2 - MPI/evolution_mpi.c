@@ -4,7 +4,7 @@
  * Computacion Paralela, Grado en Informatica (Universidad de Valladolid)
  * 2019/2020
  *
- * v1.1
+ * v1.2
  *
  * (c) 2020 Arturo Gonzalez Escribano
  */
@@ -15,8 +15,7 @@
 #include<float.h>
 #include<stdbool.h>
 #include<cputils.h>
-#include<omp.h>
-#include<time.h>
+#include<mpi.h>
 
 /* Structure to store data of a cell */
 typedef struct {
@@ -98,7 +97,7 @@ void cell_mutation( Cell *cell ) {
 			break;
 		default:
 			fprintf(stderr,"Error: Imposible type of mutation\n");
-			exit( EXIT_FAILURE );
+			MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
 	}
 	/* 4. Correct potential precision problems */
 	cell->choose_mov[2] = 1.0f - cell->choose_mov[1] - cell->choose_mov[0];
@@ -175,7 +174,7 @@ void show_usage( char *program_name ) {
  * MAIN PROGRAM
  */
 int main(int argc, char *argv[]) {
-	int i,j,t;
+	int i,j;
 
 	// Simulation data
 	int max_iter;			// Maximum number of simulation steps
@@ -188,12 +187,12 @@ int main(int argc, char *argv[]) {
 	float food_level;		// Maximum number of food level in a new source
 
 	bool food_spot_active = false;	// Special food spot: Active
-	int food_spot_row;		// Special food spot: Initial row
-	int food_spot_col;		// Special food spot: Initial row
-	int food_spot_size_rows;	// Special food spot: Rows size
-	int food_spot_size_cols;	// Special food spot: Cols size
-	float food_spot_density;	// Special food spot: Food density
-	float food_spot_level;		// Special food spot: Food level
+	int food_spot_row = 0;		// Special food spot: Initial row
+	int food_spot_col = 0;		// Special food spot: Initial row
+	int food_spot_size_rows = 0;	// Special food spot: Rows size
+	int food_spot_size_cols = 0;	// Special food spot: Cols size
+	float food_spot_density = 0.0f;	// Special food spot: Food density
+	float food_spot_level = 0.0f;	// Special food spot: Food level
 
 	unsigned short init_random_seq[3];	// Status of the init random sequence
 	unsigned short food_random_seq[3];	// Status of the food random sequence
@@ -212,12 +211,17 @@ int main(int argc, char *argv[]) {
 	sim_stat.history_max_age = 0;
 	sim_stat.history_max_food = 0.0f;
 
+	/* 0. Initialize MPI */
+	int rank;
+	MPI_Init( &argc, &argv );
+	MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+
 	/* 1. Read simulation arguments */
 	/* 1.1. Check minimum number of arguments */
 	if (argc < 11) {
 		fprintf(stderr, "-- Error: Not enough arguments when reading configuration from the command line\n\n");
 		show_usage( argv[0] );
-		exit( EXIT_FAILURE );
+		MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
 	}
 
 	/* 1.2. Read culture sizes, maximum number of iterations */
@@ -243,7 +247,7 @@ int main(int argc, char *argv[]) {
 		if ( argc < 17 ) {
 			fprintf(stderr, "-- Error in number of special-food-spot arguments in the command line\n\n");
 			show_usage( argv[0] );
-			exit( EXIT_FAILURE );
+			MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
 		}
 		else {
 			food_spot_active = true;
@@ -258,7 +262,7 @@ int main(int argc, char *argv[]) {
 			if ( argc > 17 ) {
 				fprintf(stderr, "-- Error: too many arguments in the command line\n\n");
 				show_usage( argv[0] );
-				exit( EXIT_FAILURE );
+				MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
 			}
 		}
 	}
@@ -286,7 +290,7 @@ int main(int argc, char *argv[]) {
 	cells = (Cell *)malloc( sizeof(Cell) * (size_t)num_cells );
 	if ( cells == NULL ) {
 		fprintf(stderr,"-- Error allocating: %d cells\n", num_cells );
-		exit( EXIT_FAILURE );
+		MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
 	}
 	for( i=0; i<num_cells; i++ ) {
 		// Initialize the cell ramdom sequences
@@ -305,6 +309,7 @@ int main(int argc, char *argv[]) {
 #endif // DEBUG
 
 	/* 2. Start global timer */
+	MPI_Barrier( MPI_COMM_WORLD );
 	double ttotal = cp_Wtime();
 
 /*
@@ -312,9 +317,14 @@ int main(int argc, char *argv[]) {
  * START HERE: DO NOT CHANGE THE CODE ABOVE THIS POINT
  *
  */
+
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
 	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
+	if ( culture == NULL || culture_cells == NULL ) {
+		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
+		MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
+	}
 	for( i=0; i<rows; i++ )
 		for( j=0; j<columns; j++ ) 
 			accessMat( culture, i, j ) = 0.0;
@@ -358,8 +368,6 @@ int main(int argc, char *argv[]) {
 	}
 #endif // DEBUG
 
-	clock_t section41Start = clock();
-
 	/* 4. Simulation */
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
@@ -388,14 +396,17 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		clock_t section42Start = clock();
-
-		/* 4.2. Clear ancillary structure of the culture to account alive cells in a position after movement */
+		/* 4.2. Prepare ancillary data structures */
+		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) 
 				accessMat( culture_cells, i, j ) = 0.0f;
-
-		clock_t section43Start = clock();
+ 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
+		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
+		if ( culture == NULL || culture_cells == NULL ) {
+			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
+			MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
+		}
 
 		/* 4.3. Cell movements */
 		for (i=0; i<num_cells; i++) {
@@ -440,30 +451,33 @@ int main(int argc, char *argv[]) {
 					cells[i].pos_row += cells[i].mov_row;
 					cells[i].pos_col += cells[i].mov_col;
 					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
-					if ( cells[i].pos_row >= rows ) cells[i].pos_row -= rows;
 					if ( cells[i].pos_row < 0 ) cells[i].pos_row += rows;
-					if ( cells[i].pos_col >= columns ) cells[i].pos_col -= columns;
+					if ( cells[i].pos_row >= rows ) cells[i].pos_row -= rows;
 					if ( cells[i].pos_col < 0 ) cells[i].pos_col += columns;
+					if ( cells[i].pos_col >= columns ) cells[i].pos_col -= columns;
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
 				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) += 1;
+				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
 			}
 		} // End cell movements
 		
-		clock_t section44Start = clock();
-
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		if ( new_cells == NULL ) {
+			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
+			MPI_Abort( MPI_COMM_WORLD, EXIT_FAILURE );
+		}
+
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
-				float food = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
+				float food = food_to_share[i];
 				short count = accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col );
 				float my_food = food / count;
-				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) -= my_food;
-				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) --;
 				cells[i].storage += my_food;
 
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
@@ -498,10 +512,18 @@ int main(int argc, char *argv[]) {
 			}
 		} // End cell actions
 
-		clock_t section45Start = clock();
+		/* 4.5. Clean ancillary data structures */
+		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
+		for (i=0; i<num_cells; i++) {
+			if ( cells[i].alive ) {
+				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
+			}
+		}
+		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
+		free( food_to_share );
 
-		/* 4.5. Clean dead cells from the original list */
-		// 4.5.1. Move alive cells to the left to substitute dead cells
+		/* 4.6. Clean dead cells from the original list */
+		// 4.6.1. Move alive cells to the left to substitute dead cells
 		int free_position = 0;
 		int alive_in_main_list = 0;
 		for( i=0; i<num_cells; i++ ) {
@@ -513,13 +535,11 @@ int main(int argc, char *argv[]) {
 				free_position ++;
 			}
 		}
-		// 4.5.2. Reduce the storage space of the list to the current number of cells
+		// 4.6.2. Reduce the storage space of the list to the current number of cells
 		num_cells = alive_in_main_list;
 		cells = (Cell *)realloc( cells, sizeof(Cell) * num_cells );
 
-		clock_t section46Start = clock();
-
-		/* 4.6. Join cell lists: Old and new cells list */
+		/* 4.7. Join cell lists: Old and new cells list */
 		if ( step_new_cells > 0 ) {
 			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
 			for (j=0; j<step_new_cells; j++)
@@ -528,9 +548,7 @@ int main(int argc, char *argv[]) {
 		}
 		free( new_cells );
 
-		clock_t section47Start = clock();
-
-		/* 4.7. Decrease non-harvested food */
+		/* 4.8. Decrease non-harvested food */
 		current_max_food = 0.0f;
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
@@ -539,9 +557,7 @@ int main(int argc, char *argv[]) {
 					current_max_food = accessMat( culture, i, j );
 			}
 
-		clock_t section48Start = clock();
-
-		/* 4.8. Statistics */
+		/* 4.9. Statistics */
 		// Statistics: Max food
 		if ( current_max_food > sim_stat.history_max_food ) sim_stat.history_max_food = current_max_food;
 		// Statistics: Max new cells per step
@@ -554,22 +570,12 @@ int main(int argc, char *argv[]) {
 
 
 #ifdef DEBUG
-		/* 4.9. DEBUG: Print the current state of the simulation at the end of each iteration */
+		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
 		print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
-	clock_t section4End = clock();
-
-	printf("Tiempo 4.1: %ld\n",(section42Start-section41Start));
-	printf("Tiempo 4.2: %ld\n",(section43Start-section42Start));
-	printf("Tiempo 4.3: %ld\n",(section44Start-section43Start));
-	printf("Tiempo 4.4: %ld\n",(section45Start-section44Start));
-	printf("Tiempo 4.5: %ld\n",(section46Start-section45Start));
-	printf("Tiempo 4.6: %ld\n",(section47Start-section46Start));
-	printf("Tiempo 4.7: %ld\n",(section48Start-section47Start));
-	printf("Tiempo 4.8: %ld\n",section4End-section48Start);
 	}
 
-
+	
 /*
  *
  * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
@@ -577,6 +583,7 @@ int main(int argc, char *argv[]) {
  */
 
 	/* 5. Stop global time */
+	MPI_Barrier( MPI_COMM_WORLD );
 	ttotal = cp_Wtime() - ttotal;
 
 #ifdef DEBUG
@@ -598,22 +605,24 @@ int main(int argc, char *argv[]) {
 #endif // DEBUG
 
 	/* 6. Output for leaderboard */
-	printf("\n");
-	/* 6.1. Total computation time */
-	printf("Time: %lf\n", ttotal );
+	if ( rank == 0 ) {
+		printf("\n");
+		/* 6.1. Total computation time */
+		printf("Time: %lf\n", ttotal );
 
-	/* 6.2. Results: Number of iterations and other statistics */
-	printf("Result: %d, ", iter);
-	printf("%d, %d, %d, %d, %d, %d, %d, %f", 
-		num_cells_alive, 
-		sim_stat.history_total_cells, 
-		sim_stat.history_dead_cells, 
-		sim_stat.history_max_alive_cells, 
-		sim_stat.history_max_new_cells, 
-		sim_stat.history_max_dead_cells, 
-		sim_stat.history_max_age,
-		sim_stat.history_max_food
-	);
+		/* 6.2. Results: Number of iterations and other statistics */
+		printf("Result: %d, ", iter);
+		printf("%d, %d, %d, %d, %d, %d, %d, %f\n", 
+			num_cells_alive, 
+			sim_stat.history_total_cells, 
+			sim_stat.history_dead_cells, 
+			sim_stat.history_max_alive_cells, 
+			sim_stat.history_max_new_cells, 
+			sim_stat.history_max_dead_cells, 
+			sim_stat.history_max_age,
+			sim_stat.history_max_food
+		);
+	}
 
 	/* 7. Free resources */	
 	free( culture );
@@ -621,5 +630,6 @@ int main(int argc, char *argv[]) {
 	free( cells );
 
 	/* 8. End */
+	MPI_Finalize();
 	return 0;
 }
