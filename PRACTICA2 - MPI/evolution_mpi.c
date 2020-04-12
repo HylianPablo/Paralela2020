@@ -317,6 +317,8 @@ int main(int argc, char *argv[]) {
  * START HERE: DO NOT CHANGE THE CODE ABOVE THIS POINT
  *
  */
+	int nprocs;
+	MPI_Comm_size( MPI_COMM_WORLD, &nprocs );
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
@@ -571,12 +573,13 @@ int main(int argc, char *argv[]) {
 
 		/* 4.8. Decrease non-harvested food */
 		current_max_food = 0.0f;
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ ) {
-				accessMat( culture_cells, i, j ) = 0.0f;
-				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
-				if ( accessMat( culture, i, j ) > current_max_food ) 
-					current_max_food = accessMat( culture, i, j );
+		int value95;
+		for( i=0; i<(rows * columns/nprocs)*(rank+1); i++ ){
+				printf("Mi rango es %d",rank);
+				culture_cells[i] = 0.0f;
+				culture[i]*= 0.95f; // Reduce 5%
+				if ( culture[i] > current_max_food ) 
+					current_max_food = culture[i];
 			}
 
 		/* 4.9. Statistics */
