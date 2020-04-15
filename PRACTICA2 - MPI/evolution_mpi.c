@@ -47,18 +47,6 @@ typedef struct
  *
  */
 #define accessMat(arr, exp1, exp2) arr[(int)(exp1)*columns + (int)(exp2)]
-/*
- * Macro to get execution times (in non-leaderboard executions).
- */
-#ifndef CP_TABLON
-#define update_time(timer)           \
-	{                                \
-		MPI_Barrier(MPI_COMM_WORLD); \
-		timer = MPI_Wtime() - timer; \
-	}
-#else
-#define update_time(timer)
-#endif
 
 /*
  * Function: Choose a new direction of movement for a cell
@@ -355,10 +343,18 @@ int main(int argc, char *argv[])
  *
  */
 #ifndef CP_TABLON
+#define update_time(timer)           \
+	{                                \
+		MPI_Barrier(MPI_COMM_WORLD); \
+		timer = MPI_Wtime() - timer; \
+	}
+#else
+#define update_time(timer)
+#endif
+#ifndef CP_TABLON
 	double time3_1 = 0.0;
 	double time3_2 = 0.0;
 	double time4_1 = 0.0;
-	double time4_2 = 0.0;
 	double time4_3 = 0.0;
 	double time4_4 = 0.0;
 	double time4_5 = 0.0;
@@ -387,14 +383,35 @@ int main(int argc, char *argv[])
 	int my_begin = fraction * rank;
 	printf("Empiezo en: %d\n", my_begin);
 
-	/* 3. Initialize culture surface and initial cells */
+		/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc(sizeof(float) * (size_t)rows * (size_t)columns);
 	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
+
+	// Space for the list of new cells (maximum number of new cells is num_cells)
+	/*Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
+
+	/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
+	/*float *food_to_share = (float *)malloc(sizeof(float) * num_cells);*/
+
+	// Memory errors:
+#ifndef CP_TABLON
 	if (culture == NULL || culture_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
+	/*if (new_cells == NULL)
+	{
+		fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
+		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+	}
+	if (culture == NULL || culture_cells == NULL)
+	{
+		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
+		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+	}*/
+#endif
+
 	// 3.1
 	update_time(time3_1);
 	for (i = 0; i < rows; i++)
@@ -497,7 +514,6 @@ int main(int argc, char *argv[])
 		update_time(time4_1);
 
 		/* 4.2. Prepare ancillary data structures */
-		update_time(time4_2);
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
 
 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
@@ -507,7 +523,6 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
 			MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 		}
-		update_time(time4_2);
 
 		/* 4.3. Cell movements */
 		update_time(time4_3);
@@ -686,20 +701,20 @@ int main(int argc, char *argv[])
 		/* 4.8. Decrease non-harvested food */
 		update_time(time4_8);
 		current_max_food = 0.0f;
-		float current_max_food_root;
-		short *aux = (short *)malloc(sizeof(short) * my_size);
-		float *aux1 = (float *)malloc(sizeof(float) * my_size);
+		short *aux_culture_cells= (short *)malloc(sizeof(short) * my_size);
+		float *aux_culture = (float *)malloc(sizeof(float) * my_size);
 		for (i = 0; i < my_size; i++)
 		{
-			//(rows*columns/nprocs) * rank+1
-			aux[i] = 0.0f;
-			aux1[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
+			aux_culture_cells[i] = 0.0f;
+			aux_culture[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
 			if (culture[i] > current_max_food)
 				current_max_food = culture[i];
 		}
-		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT,MPI_MAX, 0, MPI_COMM_WORLD);
-		MPI_Gather(aux, my_size, MPI_SHORT, culture_cells, my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
-		MPI_Gather(aux1, my_size, MPI_FLOAT, culture, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+		
+		float current_max_food_root;
+		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
+		MPI_Gather(aux_culture_cells my_size, MPI_SHORT, culture_cells, my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
+		MPI_Gather(aux_culture, my_size, MPI_FLOAT, culture, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 		current_max_food = current_max_food_root;
 
@@ -718,7 +733,6 @@ int main(int argc, char *argv[])
 			if (culture[i] > current_max_food)
 				current_max_food = culture[i];
 		}*/
-
 		update_time(time4_8);
 
 		/* 4.9. Statistics */
