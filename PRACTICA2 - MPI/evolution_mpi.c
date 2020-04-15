@@ -686,6 +686,7 @@ int main(int argc, char *argv[])
 		/* 4.8. Decrease non-harvested food */
 		update_time(time4_8);
 		current_max_food = 0.0f;
+		float current_max_food_root;
 		short *aux = (short *)malloc(sizeof(short) * my_size);
 		float *aux1 = (float *)malloc(sizeof(float) * my_size);
 		for (i = 0; i < my_size; i++)
@@ -693,24 +694,16 @@ int main(int argc, char *argv[])
 			//(rows*columns/nprocs) * rank+1
 			aux[i] = 0.0f;
 			aux1[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
+			if (culture[i] > current_max_food)
+				current_max_food = culture[i];
 		}
-		short *aux2;
-		float *aux3;
-		float *aux4;
-		if (rank == 0)
-		{
-			aux2 = (short *)malloc(sizeof(short) * my_size * nprocs);
-			aux3 = (float *)malloc(sizeof(float) * my_size * nprocs);
-			//aux4 = (float *)malloc(sizeof(float) * nprocs);
-		}
-		MPI_Gather(aux, my_size, MPI_SHORT, aux2, my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
-		MPI_Gather(aux1, my_size, MPI_FLOAT, aux3, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT,MPI_MAX, 0, MPI_COMM_WORLD);
+		MPI_Gather(aux, my_size, MPI_SHORT, culture_cells, my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
+		MPI_Gather(aux1, my_size, MPI_FLOAT, culture, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+		current_max_food = current_max_food_root;
+
 		//MPI_Gather(&current_max_food, 1, MPI_FLOAT, aux4, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
-		if (rank == 0)
-		{
-			memcpy(culture_cells, aux2, rows*columns*sizeof(short));
-			memcpy(culture, aux3, rows * columns * sizeof(float));
-		}
 		/*
 		for (i = 0; i < nprocs; i++)
 		{
@@ -718,12 +711,13 @@ int main(int argc, char *argv[])
 			{
 				current_max_food = aux4[i];
 			}
-		}*/
+		}
 		for (i = 0; i < rows * columns; i++)
 		{
+			culture[i]*=0.95;
 			if (culture[i] > current_max_food)
 				current_max_food = culture[i];
-		}
+		}*/
 
 		update_time(time4_8);
 
