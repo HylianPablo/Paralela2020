@@ -447,6 +447,7 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
 	/* Show initial cells data */
+	if(rank==0){
 	printf("Initial cells data: %d\n", num_cells);
 	for (i = 0; i < num_cells; i++)
 	{
@@ -461,6 +462,7 @@ int main(int argc, char *argv[])
 			   cells[i].choose_mov[2],
 			   cells[i].storage,
 			   cells[i].age);
+	}
 	}
 #endif // DEBUG
 
@@ -700,23 +702,38 @@ int main(int argc, char *argv[])
 
 		/* 4.8. Decrease non-harvested food */
 		update_time(time4_8);
+		int dummy = fraction + (int)((rows * columns) % nprocs);
+		int vectorV[nprocs];
+		for (i=0;i<nprocs-1;i++){
+			vectorV[i]=fraction;
+		}
+		int vectorMB[nprocs];
+		for(i=0;i<nprocs;i++){
+			vectorMB[i]=fraction*i;
+		}
+		vectorV[nprocs-1]=dummy;
 		current_max_food = 0.0f;
 		short *aux_culture_cells= (short *)malloc(sizeof(short) * my_size);
 		float *aux_culture = (float *)malloc(sizeof(float) * my_size);
+		//printf("Mi rango es %d, mi tamanyo es %d, empiezo en %d\n",rank,my_size,my_begin);
 		for (i = 0; i < my_size; i++)
 		{
 			aux_culture_cells[i] = 0.0f;
 			aux_culture[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
-			if (culture[i] > current_max_food)
-				current_max_food = culture[i];
+			if (aux_culture[i] > current_max_food)
+				current_max_food = aux_culture[i];
 		}
+		//printf("Mi rango es %d, mi tamanyo es %d, empiezo en %d, mi indice es %d\n",rank,my_size,my_begin,i);
 		
 		float current_max_food_root;
-		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
-		MPI_Gather(aux_culture_cells my_size, MPI_SHORT, culture_cells, my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
-		MPI_Gather(aux_culture, my_size, MPI_FLOAT, culture, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX,0, MPI_COMM_WORLD);
+		//MPI_Gather(aux_culture_cells, my_size, MPI_SHORT, culture_cells,my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
+		//MPI_Gather(aux_culture, my_size, MPI_FLOAT, culture, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+		MPI_Gatherv(aux_culture_cells, my_size, MPI_SHORT, culture_cells,vectorV, vectorMB, MPI_SHORT, 0, MPI_COMM_WORLD);
+		MPI_Gatherv(aux_culture, my_size, MPI_FLOAT, culture, vectorV, vectorMB, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-		current_max_food = current_max_food_root;
+		if(rank==0)
+			current_max_food = current_max_food_root;
 
 		//MPI_Gather(&current_max_food, 1, MPI_FLOAT, aux4, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
 		/*
@@ -755,6 +772,7 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
+		if(rank==0)
 		print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
 #endif // DEBUG
 	}
@@ -766,7 +784,6 @@ int main(int argc, char *argv[])
 		printf("\t3.1 - %lf\n", time3_1);
 		printf("\t3.2 - %lf\n", time3_2);
 		printf("\t4.1 - %lf\n", time4_1);
-		printf("\t4.2 - %lf\n", time4_2);
 		printf("\t4.3 - %lf\n", time4_3);
 		printf("\t4.4 - %lf\n", time4_4);
 		printf("\t4.5 - %lf\n", time4_5);
