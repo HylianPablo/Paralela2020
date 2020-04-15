@@ -342,10 +342,6 @@ int main(int argc, char *argv[])
  * START HERE: DO NOT CHANGE THE CODE ABOVE THIS POINT
  *
  */
-
-/*
- * Macro to get execution times (in non-leaderboard executions).
- */
 #ifndef CP_TABLON
 #define update_time(timer)           \
 	{                                \
@@ -383,19 +379,19 @@ int main(int argc, char *argv[])
 	{
 		printf("Tamaño total: %d\n", rows * columns);
 	}
-	// 2.2. Calcular donde empieza cada proceso con respecto al hipotético array global
+	// 2.2. Calcular donde empieza cada proceso con respecto al hipotetico array global
 	int my_begin = fraction * rank;
 	printf("Empiezo en: %d\n", my_begin);
 
-	/* 3. Initialize culture surface and initial cells */
+		/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc(sizeof(float) * (size_t)rows * (size_t)columns);
 	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
 
 	// Space for the list of new cells (maximum number of new cells is num_cells)
-	Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
+	/*Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
 
 	/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
-	float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
+	/*float *food_to_share = (float *)malloc(sizeof(float) * num_cells);*/
 
 	// Memory errors:
 #ifndef CP_TABLON
@@ -404,7 +400,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
-	if (new_cells == NULL)
+	/*if (new_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
@@ -413,7 +409,7 @@ int main(int argc, char *argv[])
 	{
 		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-	}
+	}*/
 #endif
 
 	// 3.1
@@ -470,8 +466,7 @@ int main(int argc, char *argv[])
 
 	/* 4. Simulation */
 	float current_max_food = 0.0f;
-	int num_cells_alive = num_cells;	
-	int free_position = 0;
+	int num_cells_alive = num_cells;
 	int iter;
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
@@ -518,6 +513,17 @@ int main(int argc, char *argv[])
 		}
 		update_time(time4_1);
 
+		/* 4.2. Prepare ancillary data structures */
+		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
+
+		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
+		float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
+		if (culture == NULL || culture_cells == NULL)
+		{
+			fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
+			MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+		}
+
 		/* 4.3. Cell movements */
 		update_time(time4_3);
 		int step_dead_cells = 0;
@@ -535,6 +541,7 @@ int main(int argc, char *argv[])
 				{
 					// Cell has died
 					cells[i].alive = false;
+					num_cells_alive--;
 					step_dead_cells++;
 					continue;
 				}
@@ -588,30 +595,18 @@ int main(int argc, char *argv[])
 		} // End cell movements
 		update_time(time4_3);
 
-		/* 4.6. Clean dead cells from the original list */
-		if (step_dead_cells != 0)
-		{
-			free_position = 0;
-			update_time(time4_6);
-			// 4.6.1. Move alive cells to the left to substitute dead cells
-			for (i = 0; i < num_cells; i++)
-			{
-				if (cells[i].alive)
-				{
-					if (free_position != i)
-					{
-						cells[free_position] = cells[i];
-					}
-					free_position++;
-				}
-			}
-			update_time(time4_6);
-		}
-
 		/* 4.4. Cell actions */
 		update_time(time4_4);
+		// Space for the list of new cells (maximum number of new cells is num_cells)
+		Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
+		if (new_cells == NULL)
+		{
+			fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
+			MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+		}
+
 		int step_new_cells = 0;
-		for (i = 0; i < free_position; i++)
+		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
 			{
@@ -625,6 +620,8 @@ int main(int argc, char *argv[])
 				if (cells[i].age > 30 && cells[i].storage > 20)
 				{
 					// Split: Create new cell
+					num_cells_alive++;
+					sim_stat.history_total_cells++;
 					step_new_cells++;
 
 					// New cell is a copy of parent cell
@@ -650,8 +647,7 @@ int main(int argc, char *argv[])
 					cell_mutation(&new_cells[step_new_cells - 1]);
 				}
 			}
-		} // End cell actions		
-		num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells;
+		} // End cell actions
 		update_time(time4_4);
 
 		/* 4.5. Clean ancillary data structures */
@@ -665,56 +661,64 @@ int main(int argc, char *argv[])
 			}
 		}
 		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
+		free(food_to_share);
 		update_time(time4_5);
 
-		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		if (num_cells_alive > num_cells)
+		/* 4.6. Clean dead cells from the original list */
+		update_time(time4_6);
+		// 4.6.1. Move alive cells to the left to substitute dead cells
+		int free_position = 0;
+		int alive_in_main_list = 0;
+		for (i = 0; i < num_cells; i++)
 		{
-			new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
-			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
-			cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive))
+			if (cells[i].alive)
+			{
+				alive_in_main_list++;
+				if (free_position != i)
+				{
+					cells[free_position] = cells[i];
+				}
+				free_position++;
+			}
 		}
-		num_cells = free_position;
+		// 4.6.2. Reduce the storage space of the list to the current number of cells
+		num_cells = alive_in_main_list;
+		cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells);
+		update_time(time4_6);
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		update_time(time4_7);
 		if (step_new_cells > 0)
 		{
+			cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells + step_new_cells));
 			for (j = 0; j < step_new_cells; j++)
 				cells[num_cells + j] = new_cells[j];
 			num_cells += step_new_cells;
 		}
+		free(new_cells);
 		update_time(time4_7);
 
 		/* 4.8. Decrease non-harvested food */
 		update_time(time4_8);
 		current_max_food = 0.0f;
-		short *aux = (short *)malloc(sizeof(short) * my_size);
-		float *aux1 = (float *)malloc(sizeof(float) * my_size);
+		short *aux_culture_cells= (short *)malloc(sizeof(short) * my_size);
+		float *aux_culture = (float *)malloc(sizeof(float) * my_size);
 		for (i = 0; i < my_size; i++)
 		{
-			//(rows*columns/nprocs) * rank+1
-			/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-			aux[i] = 0.0f;
-			aux1[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
+			aux_culture_cells[i] = 0.0f;
+			aux_culture[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
+			if (culture[i] > current_max_food)
+				current_max_food = culture[i];
 		}
-		short *aux2;
-		float *aux3;
-		float *aux4;
-		if (rank == 0)
-		{
-			aux2 = (short *)malloc(sizeof(short) * my_size * nprocs);
-			aux3 = (float *)malloc(sizeof(float) * my_size * nprocs);
-			//aux4 = (float *)malloc(sizeof(float) * nprocs);
-		}
-		MPI_Gather(aux, my_size, MPI_SHORT, aux2, my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
-		MPI_Gather(aux1, my_size, MPI_FLOAT, aux3, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+		
+		float current_max_food_root;
+		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
+		MPI_Gather(aux_culture_cells my_size, MPI_SHORT, culture_cells, my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
+		MPI_Gather(aux_culture, my_size, MPI_FLOAT, culture, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+		current_max_food = current_max_food_root;
+
 		//MPI_Gather(&current_max_food, 1, MPI_FLOAT, aux4, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
-		if (rank == 0)
-		{
-			memcpy(culture_cells, aux2, rows*columns*sizeof(short));
-			memcpy(culture, aux3, rows * columns * sizeof(float));
-		}
 		/*
 		for (i = 0; i < nprocs; i++)
 		{
@@ -722,23 +726,23 @@ int main(int argc, char *argv[])
 			{
 				current_max_food = aux4[i];
 			}
-		}*/
+		}
 		for (i = 0; i < rows * columns; i++)
 		{
+			culture[i]*=0.95;
 			if (culture[i] > current_max_food)
 				current_max_food = culture[i];
-		}
-
+		}*/
 		update_time(time4_8);
 
 		/* 4.9. Statistics */
 		update_time(time4_9);
 		// Statistics: Max food
-		sim_stat.history_total_cells += step_new_cells;
 		if (current_max_food > sim_stat.history_max_food)
 			sim_stat.history_max_food = current_max_food;
 		// Statistics: Max new cells per step
 		if (step_new_cells > sim_stat.history_max_new_cells)
+
 			sim_stat.history_max_new_cells = step_new_cells;
 		// Statistics: Accumulated dead and Max dead cells per step
 		sim_stat.history_dead_cells += step_dead_cells;
@@ -762,6 +766,7 @@ int main(int argc, char *argv[])
 		printf("\t3.1 - %lf\n", time3_1);
 		printf("\t3.2 - %lf\n", time3_2);
 		printf("\t4.1 - %lf\n", time4_1);
+		printf("\t4.2 - %lf\n", time4_2);
 		printf("\t4.3 - %lf\n", time4_3);
 		printf("\t4.4 - %lf\n", time4_4);
 		printf("\t4.5 - %lf\n", time4_5);
@@ -772,7 +777,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-/*
+	/*
  *
  * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
  *
