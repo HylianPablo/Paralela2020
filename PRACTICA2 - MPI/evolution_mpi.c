@@ -128,35 +128,36 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 	{
 		printf("|");
 		for (j = 0; j < columns; j++)
-		{
-			char symbol;
-			if (accessMat(culture, i, j) >= 20)
-				symbol = '+';
-			else if (accessMat(culture, i, j) >= 10)
-				symbol = '*';
-			else if (accessMat(culture, i, j) >= 5)
-				symbol = '.';
-			else
-				symbol = ' ';
+        {
+            char symbol;
+            // if (accessMat(culture, i, j) >= 20)
+            //     symbol = '+';
+            // else if (accessMat(culture, i, j) >= 10)
+            //     symbol = '*';
+            // else if (accessMat(culture, i, j) >= 5)
+            //     symbol = '.';
+            // else
+            //     symbol = ' ';
 
-			int t;
-			int counter = 0;
-			for (t = 0; t < num_cells; t++)
-			{
-				int row = (int)(cells[t].pos_row);
-				int col = (int)(cells[t].pos_col);
-				if (cells[t].alive && row == i && col == j)
-				{
-					counter++;
-				}
-			}
-			if (counter > 9)
-				printf("(M)");
-			else if (counter > 0)
-				printf("(%1d)", counter);
-			else
-				printf(" %c ", symbol);
-		}
+            int t;
+            int counter = 0;
+            for (t = 0; t < num_cells; t++)
+            {
+                int row = (int)(cells[t].pos_row);
+                int col = (int)(cells[t].pos_col);
+                if (cells[t].alive && row == i && col == j)
+                {
+                    counter++;
+                }
+            }
+            if (counter > 9)
+                printf("  (M)  ");
+            else if (counter > 0)
+                printf("  (%1d)  ", counter);
+            else
+                //printf(" %c ", symbol);
+                printf(" %2.2f ", (accessMat(culture, i, j)));
+        }
 		printf("|\n");
 	}
 	printf("+");
@@ -719,7 +720,9 @@ int main(int argc, char *argv[])
 		for (i = 0; i < my_size; i++)
 		{
 			aux_culture_cells[i] = 0.0f;
+			//printf("Valor inicial: %f\n",culture[i+my_begin]);
 			aux_culture[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
+			//printf("Valor inicial: %f\n",aux_culture[i]);
 			if (aux_culture[i] > current_max_food)
 				current_max_food = aux_culture[i];
 		}
