@@ -128,36 +128,36 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 	{
 		printf("|");
 		for (j = 0; j < columns; j++)
-        {
-            char symbol;
-            // if (accessMat(culture, i, j) >= 20)
-            //     symbol = '+';
-            // else if (accessMat(culture, i, j) >= 10)
-            //     symbol = '*';
-            // else if (accessMat(culture, i, j) >= 5)
-            //     symbol = '.';
-            // else
-            //     symbol = ' ';
+		{
+			char symbol;
+			// if (accessMat(culture, i, j) >= 20)
+			//     symbol = '+';
+			// else if (accessMat(culture, i, j) >= 10)
+			//     symbol = '*';
+			// else if (accessMat(culture, i, j) >= 5)
+			//     symbol = '.';
+			// else
+			//     symbol = ' ';
 
-            int t;
-            int counter = 0;
-            for (t = 0; t < num_cells; t++)
-            {
-                int row = (int)(cells[t].pos_row);
-                int col = (int)(cells[t].pos_col);
-                if (cells[t].alive && row == i && col == j)
-                {
-                    counter++;
-                }
-            }
-            if (counter > 9)
-                printf("  (M)  ");
-            else if (counter > 0)
-                printf("  (%1d)  ", counter);
-            else
-                //printf(" %c ", symbol);
-                printf(" %2.2f ", (accessMat(culture, i, j)));
-        }
+			int t;
+			int counter = 0;
+			for (t = 0; t < num_cells; t++)
+			{
+				int row = (int)(cells[t].pos_row);
+				int col = (int)(cells[t].pos_col);
+				if (cells[t].alive && row == i && col == j)
+				{
+					counter++;
+				}
+			}
+			if (counter > 9)
+				printf("  (M)  ");
+			else if (counter > 0)
+				printf("  (%1d)  ", counter);
+			else
+				//printf(" %c ", symbol);
+				printf(" %2.2f ", (accessMat(culture, i, j)));
+		}
 		printf("|\n");
 	}
 	printf("+");
@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
 	int my_begin = fraction * rank;
 	printf("Empiezo en: %d\n", my_begin);
 
-		/* 3. Initialize culture surface and initial cells */
+	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc(sizeof(float) * (size_t)rows * (size_t)columns);
 	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
 
@@ -415,10 +415,11 @@ int main(int argc, char *argv[])
 
 	// 3.1
 	update_time(time3_1);
-	for (i = 0; i < rows; i++)
-		for (j = 0; j < columns; j++)
-			accessMat(culture, i, j) = 0.0;
-	accessMat(culture_cells, i, j) = 0;
+	for (i = 0; i < my_size; i++)
+		{
+			culture[i + my_begin] = 0.0f; //
+		}
+	//accessMat(culture_cells, i, j) = 0; //Creo que sobra
 	update_time(time3_1);
 
 	// 3.2
@@ -448,22 +449,23 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
 	/* Show initial cells data */
-	if(rank==0){
-	printf("Initial cells data: %d\n", num_cells);
-	for (i = 0; i < num_cells; i++)
+	if (rank == 0)
 	{
-		printf("\tCell %d, Pos(%f,%f), Mov(%f,%f), Choose_mov(%f,%f,%f), Storage: %f, Age: %d\n",
-			   i,
-			   cells[i].pos_row,
-			   cells[i].pos_col,
-			   cells[i].mov_row,
-			   cells[i].mov_col,
-			   cells[i].choose_mov[0],
-			   cells[i].choose_mov[1],
-			   cells[i].choose_mov[2],
-			   cells[i].storage,
-			   cells[i].age);
-	}
+		printf("Initial cells data: %d\n", num_cells);
+		for (i = 0; i < num_cells; i++)
+		{
+			printf("\tCell %d, Pos(%f,%f), Mov(%f,%f), Choose_mov(%f,%f,%f), Storage: %f, Age: %d\n",
+				   i,
+				   cells[i].pos_row,
+				   cells[i].pos_col,
+				   cells[i].mov_row,
+				   cells[i].mov_col,
+				   cells[i].choose_mov[0],
+				   cells[i].choose_mov[1],
+				   cells[i].choose_mov[2],
+				   cells[i].storage,
+				   cells[i].age);
+		}
 	}
 #endif // DEBUG
 
@@ -703,56 +705,20 @@ int main(int argc, char *argv[])
 
 		/* 4.8. Decrease non-harvested food */
 		update_time(time4_8);
-		int dummy = fraction + (int)((rows * columns) % nprocs);
-		int vectorV[nprocs];
-		for (i=0;i<nprocs-1;i++){
-			vectorV[i]=fraction;
-		}
-		int vectorMB[nprocs];
-		for(i=0;i<nprocs;i++){
-			vectorMB[i]=fraction*i;
-		}
-		vectorV[nprocs-1]=dummy;
 		current_max_food = 0.0f;
-		short *aux_culture_cells= (short *)malloc(sizeof(short) * my_size);
-		float *aux_culture = (float *)malloc(sizeof(float) * my_size);
-		//printf("Mi rango es %d, mi tamanyo es %d, empiezo en %d\n",rank,my_size,my_begin);
 		for (i = 0; i < my_size; i++)
 		{
-			aux_culture_cells[i] = 0.0f;
-			//printf("Valor inicial: %f\n",culture[i+my_begin]);
-			aux_culture[i] = culture[i + my_begin] * 0.95f; // Reduce 5%
-			//printf("Valor inicial: %f\n",aux_culture[i]);
-			if (aux_culture[i] > current_max_food)
-				current_max_food = aux_culture[i];
+			culture_cells[i+my_begin] = 0.0f;
+			culture[i + my_begin] *= 0.95f; // Reduce 5%
+			if (culture[i+my_begin] > current_max_food)
+				current_max_food = culture[i+my_begin];
 		}
-		//printf("Mi rango es %d, mi tamanyo es %d, empiezo en %d, mi indice es %d\n",rank,my_size,my_begin,i);
-		
-		float current_max_food_root;
-		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX,0, MPI_COMM_WORLD);
-		//MPI_Gather(aux_culture_cells, my_size, MPI_SHORT, culture_cells,my_size, MPI_SHORT, 0, MPI_COMM_WORLD);
-		//MPI_Gather(aux_culture, my_size, MPI_FLOAT, culture, my_size, MPI_FLOAT, 0, MPI_COMM_WORLD);
-		MPI_Gatherv(aux_culture_cells, my_size, MPI_SHORT, culture_cells,vectorV, vectorMB, MPI_SHORT, 0, MPI_COMM_WORLD);
-		MPI_Gatherv(aux_culture, my_size, MPI_FLOAT, culture, vectorV, vectorMB, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-		if(rank==0)
+		float current_max_food_root;
+		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
+		if (rank == 0)
 			current_max_food = current_max_food_root;
 
-		//MPI_Gather(&current_max_food, 1, MPI_FLOAT, aux4, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
-		/*
-		for (i = 0; i < nprocs; i++)
-		{
-			if (aux4[i] > current_max_food)
-			{
-				current_max_food = aux4[i];
-			}
-		}
-		for (i = 0; i < rows * columns; i++)
-		{
-			culture[i]*=0.95;
-			if (culture[i] > current_max_food)
-				current_max_food = culture[i];
-		}*/
 		update_time(time4_8);
 
 		/* 4.9. Statistics */
@@ -775,8 +741,8 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
-		if(rank==0)
-		print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
+		if (rank == 0)
+			print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
 #endif // DEBUG
 	}
 
