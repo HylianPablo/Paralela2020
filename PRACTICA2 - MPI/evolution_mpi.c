@@ -10,6 +10,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
@@ -368,25 +369,55 @@ int main(int argc, char *argv[])
 	int nprocs;
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	int fraction = (int)(rows * columns) / nprocs;
-	int my_size;
-	if (rank == nprocs - 1)
-	{
-		my_size = fraction + (int)((rows * columns) % nprocs);
-	}
-	else
-		my_size = fraction;
-	printf("Mi tamaño es: %d\n", my_size);
-	if (rank == 0)
-	{
-		printf("Tamaño total: %d\n", rows * columns);
-	}
-	// 2.2. Calcular donde empieza cada proceso con respecto al hipotetico array global
-	int my_begin = fraction * rank;
-	printf("Empiezo en: %d\n", my_begin);
+	int remainder = (rows * columns) % nprocs;
+	int my_size = fraction + (rank < remainder);
+
+	int max_ceil = rank > remainder ? remainder : rank;
+	int max_floor = rank > remainder ? rank - remainder : 0;
+	int my_begin = max_ceil * (fraction + 1) + max_floor * fraction;
+
+	printf("Soy el rank %d, empiezo en %d y mi tamaño es %d\n",rank,my_begin,my_size);
+	if(rank==0)
+		printf("El tamaño total es %d\n",rows*columns);
+
+
+	//STRUCT -- CELLS
+	// Create datatype for Rectangle
+	// Number of field blocks
+	int fields = 9 ;
+	int tag = 1000;
+	// Number of elements per block
+	int array_of_blocklengths[] = {1,1,1,1,3,1,1,3,1 };
+	// Block displacements
+	MPI_Aint array_of_displacements[] = {
+		offsetof(Cell,pos_row),
+		offsetof(Cell,pos_col),
+		offsetof(Cell,mov_row),
+		offsetof(Cell,mov_col),
+		offsetof(Cell,choose_mov),
+		offsetof(Cell,storage),
+		offsetof(Cell,age),
+		offsetof(Cell,random_seq),
+		offsetof(Cell,alive)
+		};
+	// Block types
+	MPI_Datatype array_of_types[] = {MPI_FLOAT,MPI_FLOAT,MPI_FLOAT,MPI_FLOAT,MPI_FLOAT,MPI_FLOAT,MPI_INT,MPI_UNSIGNED_SHORT,MPI_C_BOOL };
+	MPI_Aint lb, extent;
+	MPI_Datatype MPI_Cell, MPI_CellExt;
+
+	// Create basic fields structure
+	MPI_Type_create_struct(fields,array_of_blocklengths,array_of_displacements,array_of_types,&MPI_Cell );
+
+	// Resize to cover alignment extent
+	//	...
+	MPI_Type_get_extent(MPI_Cell,&lb,&extent );
+	MPI_Type_create_resized(MPI_Cell, lb, extent, &MPI_CellExt );
+	MPI_Type_commit(&MPI_CellExt );
+
 
 	/* 3. Initialize culture surface and initial cells */
-	culture = (float *)malloc(sizeof(float) * (size_t)rows * (size_t)columns);
-	culture_cells = (short *)malloc(sizeof(short) * (size_t)rows * (size_t)columns);
+	culture = (float *)malloc(sizeof(float) * (size_t)my_size);
+	culture_cells = (short *)malloc(sizeof(short) * (size_t)my_size);
 
 	// Space for the list of new cells (maximum number of new cells is num_cells)
 	/*Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
@@ -416,9 +447,9 @@ int main(int argc, char *argv[])
 	// 3.1
 	update_time(time3_1);
 	for (i = 0; i < my_size; i++)
-		{
-			culture[i + my_begin] = 0.0f; //
-		}
+	{
+		culture[i] = 0.0f; //
+	}
 	//accessMat(culture_cells, i, j) = 0; //Creo que sobra
 	update_time(time3_1);
 
@@ -495,9 +526,11 @@ int main(int argc, char *argv[])
 		{
 			int row = (int)(rows * rand41[3 * i]);
 			int col = (int)(columns * rand41[3 * i + 1]);
-			if((row*columns+col)<my_begin+fraction && (row*columns+col)>= my_begin){  //Funciona sólo para divisiones enteras
+			if ((row * columns + col) < my_begin + my_size && (row * columns + col) >= my_begin)
+			{ //Funciona sólo para divisiones enteras
 				float food = (float)(food_level * rand41[3 * i + 2]);
-				accessMat(culture, row, col) += food;
+				//accessMat(culture, row, col) += food;
+				culture[(row*columns+col)-my_begin]+=food;
 			}
 		}
 		// In the special food spot
@@ -514,9 +547,11 @@ int main(int argc, char *argv[])
 			{
 				int row = food_spot_row + (int)(food_spot_size_rows * rand41[3 * i]);
 				int col = food_spot_col + (int)(food_spot_size_cols * rand41[3 * i + 1]);
-				if((row*columns+col)<my_begin+fraction && (row*columns+col)>= my_begin){
+				if ((row * columns + col) < my_begin + my_size && (row * columns + col) >= my_begin)
+				{
 					float food = (float)(food_spot_level * rand41[3 * i + 2]);
-					accessMat(culture, row, col) += food;
+					culture[(row*columns+col)-my_begin]+=food;
+					//accessMat(culture, row, col) += food;
 				}
 			}
 		}
@@ -536,6 +571,9 @@ int main(int argc, char *argv[])
 		/* 4.3. Cell movements */
 		update_time(time4_3);
 		int step_dead_cells = 0;
+		int step_dead_cells_root;
+		int max_age=0;
+		int max_age_root;
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
@@ -550,7 +588,7 @@ int main(int argc, char *argv[])
 				{
 					// Cell has died
 					cells[i].alive = false;
-					num_cells_alive--;
+					//num_cells_alive--;
 					step_dead_cells++;
 					continue;
 				}
@@ -586,6 +624,7 @@ int main(int argc, char *argv[])
 					cells[i].pos_row += cells[i].mov_row;
 					cells[i].pos_col += cells[i].mov_col;
 					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+	
 					if (cells[i].pos_row < 0)
 						cells[i].pos_row += rows;
 					if (cells[i].pos_row >= rows)
@@ -597,13 +636,21 @@ int main(int argc, char *argv[])
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				if((cells[i].pos_row*columns+cells[i].pos_col)<my_begin+fraction && (cells[i].pos_row*columns+cells[i].pos_col)>= my_begin){
-					accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
-				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-					food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
+				if ((cells[i].pos_row * columns + cells[i].pos_col) < my_begin + my_size && (cells[i].pos_row * columns + cells[i].pos_col) >= my_begin)
+				{
+					culture_cells[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin]+=1;
+					//accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+					/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+					food_to_share[i] = culture_cells[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin];
 				}
 			}
 		} // End cell movements
+		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+		if(rank==0){
+			sim_stat.history_max_age=max_age_root;
+		}
+
 		update_time(time4_3);
 
 		/* 4.4. Cell actions */
@@ -617,58 +664,68 @@ int main(int argc, char *argv[])
 		}
 
 		int step_new_cells = 0;
+		int step_new_cells_root=0;
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
 			{
 				/* 4.4.1. Food harvesting */
 				float food = food_to_share[i];
-				short count = accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
-				float my_food = food / count;
-				cells[i].storage += my_food;
 
-				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
-				if (cells[i].age > 30 && cells[i].storage > 20)
-				{
-					// Split: Create new cell
-					num_cells_alive++;
-					sim_stat.history_total_cells++;
-					step_new_cells++;
+				//if ((cells[i].pos_row * columns + cells[i].pos_col) < my_begin + my_size && (cells[i].pos_row * columns + cells[i].pos_col) >= my_begin)
+				//{
+					short count = culture_cells[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin];
+					
+					float my_food = food / count;
+					cells[i].storage += my_food;
 
-					// New cell is a copy of parent cell
-					new_cells[step_new_cells - 1] = cells[i];
+					/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
+					if (cells[i].age > 30 && cells[i].storage > 20)
+					{
+						// Split: Create new cell
+						//num_cells_alive++;
+						sim_stat.history_total_cells++;
+						step_new_cells++;
 
-					// Split energy stored and update age in both cells
-					cells[i].storage /= 2.0f;
-					new_cells[step_new_cells - 1].storage /= 2.0f;
-					cells[i].age = 1;
-					new_cells[step_new_cells - 1].age = 1;
+						// New cell is a copy of parent cell
+						new_cells[step_new_cells - 1] = cells[i];
 
-					// Random seed for the new cell, obtained using the parent random sequence
-					new_cells[step_new_cells - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
-					new_cells[step_new_cells - 1].random_seq[1] = (unsigned short)nrand48(cells[i].random_seq);
-					new_cells[step_new_cells - 1].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
+						// Split energy stored and update age in both cells
+						cells[i].storage /= 2.0f;
+						new_cells[step_new_cells - 1].storage /= 2.0f;
+						cells[i].age = 1;
+						new_cells[step_new_cells - 1].age = 1;
 
-					// Both cells start in random directions
-					cell_new_direction(&cells[i]);
-					cell_new_direction(&new_cells[step_new_cells - 1]);
+						// Random seed for the new cell, obtained using the parent random sequence
+						new_cells[step_new_cells - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
+						new_cells[step_new_cells - 1].random_seq[1] = (unsigned short)nrand48(cells[i].random_seq);
+						new_cells[step_new_cells - 1].random_seq[2] = (unsigned short)nrand48(cells[i].random_seq);
 
-					// Mutations of the movement genes in both cells
-					cell_mutation(&cells[i]);
-					cell_mutation(&new_cells[step_new_cells - 1]);
-				}
+						// Both cells start in random directions
+						cell_new_direction(&cells[i]);
+						cell_new_direction(&new_cells[step_new_cells - 1]);
+
+						// Mutations of the movement genes in both cells
+						cell_mutation(&cells[i]);
+						cell_mutation(&new_cells[step_new_cells - 1]);
+					}
+				//}
 			}
 		} // End cell actions
 		update_time(time4_4);
+		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		if(rank==0)
+			num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells_root;
 
 		/* 4.5. Clean ancillary data structures */
 		update_time(time4_5);
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i = 0; i < num_cells; i++)
 		{
-			if (cells[i].alive && cells[i].pos_row*columns+cells[i].pos_col < my_begin+fraction && cells[i].pos_row*columns+cells[i].pos_col >= my_begin)
+			if (cells[i].alive && cells[i].pos_row * columns + cells[i].pos_col < my_begin + my_size && cells[i].pos_row * columns + cells[i].pos_col >= my_begin)
 			{
-				accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
+				//accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
+				culture[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin] = 0.0f;
 			}
 		}
 		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
@@ -714,10 +771,10 @@ int main(int argc, char *argv[])
 		current_max_food = 0.0f;
 		for (i = 0; i < my_size; i++)
 		{
-			culture_cells[i+my_begin] = 0.0f;
-			culture[i + my_begin] *= 0.95f; // Reduce 5%
-			if (culture[i+my_begin] > current_max_food)
-				current_max_food = culture[i+my_begin];
+			culture_cells[i] = 0.0f;
+			culture[i] *= 0.95f; // Reduce 5%
+			if (culture[i] > current_max_food)
+				current_max_food = culture[i];
 		}
 
 		float current_max_food_root;
@@ -733,12 +790,12 @@ int main(int argc, char *argv[])
 		if (current_max_food > sim_stat.history_max_food)
 			sim_stat.history_max_food = current_max_food;
 		// Statistics: Max new cells per step
-		if (step_new_cells > sim_stat.history_max_new_cells)
+		if (step_new_cells_root > sim_stat.history_max_new_cells)
 
-			sim_stat.history_max_new_cells = step_new_cells;
+			sim_stat.history_max_new_cells = step_new_cells_root;
 		// Statistics: Accumulated dead and Max dead cells per step
-		sim_stat.history_dead_cells += step_dead_cells;
-		if (step_dead_cells > sim_stat.history_max_dead_cells)
+		sim_stat.history_dead_cells += step_dead_cells_root;
+		if (step_dead_cells_root > sim_stat.history_max_dead_cells)
 			sim_stat.history_max_dead_cells = step_dead_cells;
 		// Statistics: Max alive cells per step
 		if (num_cells_alive > sim_stat.history_max_alive_cells)
@@ -747,8 +804,8 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
-		if (rank == 0)
-			print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
+			if(rank==0)
+				print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
 #endif // DEBUG
 	}
 
