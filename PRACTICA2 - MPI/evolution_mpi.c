@@ -495,8 +495,10 @@ int main(int argc, char *argv[])
 		{
 			int row = (int)(rows * rand41[3 * i]);
 			int col = (int)(columns * rand41[3 * i + 1]);
-			float food = (float)(food_level * rand41[3 * i + 2]);
-			accessMat(culture, row, col) += food;
+			if((row*columns+col)<my_begin+fraction && (row*columns+col)>= my_begin){  //Funciona sólo para divisiones enteras
+				float food = (float)(food_level * rand41[3 * i + 2]);
+				accessMat(culture, row, col) += food;
+			}
 		}
 		// In the special food spot
 		if (food_spot_active)
@@ -512,8 +514,10 @@ int main(int argc, char *argv[])
 			{
 				int row = food_spot_row + (int)(food_spot_size_rows * rand41[3 * i]);
 				int col = food_spot_col + (int)(food_spot_size_cols * rand41[3 * i + 1]);
-				float food = (float)(food_spot_level * rand41[3 * i + 2]);
-				accessMat(culture, row, col) += food;
+				if((row*columns+col)<my_begin+fraction && (row*columns+col)>= my_begin){
+					float food = (float)(food_spot_level * rand41[3 * i + 2]);
+					accessMat(culture, row, col) += food;
+				}
 			}
 		}
 		update_time(time4_1);
@@ -593,9 +597,11 @@ int main(int argc, char *argv[])
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+				if((cells[i].pos_row*columns+cells[i].pos_col)<my_begin+fraction && (cells[i].pos_row*columns+cells[i].pos_col)>= my_begin){
+					accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-				food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
+					food_to_share[i] = accessMat(culture, cells[i].pos_row, cells[i].pos_col);
+				}
 			}
 		} // End cell movements
 		update_time(time4_3);
@@ -660,7 +666,7 @@ int main(int argc, char *argv[])
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i = 0; i < num_cells; i++)
 		{
-			if (cells[i].alive)
+			if (cells[i].alive && cells[i].pos_row*columns+cells[i].pos_col < my_begin+fraction && cells[i].pos_row*columns+cells[i].pos_col >= my_begin)
 			{
 				accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
 			}
