@@ -122,25 +122,25 @@ void print_status( int iteration, int rows, int columns, float *culture, int num
 	for( i=0; i<rows; i++ ) {
 		printf("|");
 		for( j=0; j<columns; j++ ) {
-			char symbol;
-			if ( accessMat( culture, i, j ) >= 20 ) symbol = '+';
-			else if ( accessMat( culture, i, j ) >= 10 ) symbol = '*';
-			else if ( accessMat( culture, i, j ) >= 5 ) symbol = '.';
-			else symbol = ' ';
+            char symbol;
+            if ( accessMat( culture, i, j ) >= 20 ) symbol = '+';
+            else if ( accessMat( culture, i, j ) >= 10 ) symbol = '*';
+            else if ( accessMat( culture, i, j ) >= 5 ) symbol = '.';
+            else symbol = ' ';
 
-			int t;
-			int counter = 0;
-			for( t=0; t<num_cells; t++ ) {
-				int row = (int)(cells[t].pos_row);
-				int col = (int)(cells[t].pos_col);
-				if ( cells[t].alive && row == i && col == j ) {
-					counter ++;
-				}
-			}
-			if ( counter > 9 ) printf("(M)" );
-			else if ( counter > 0 ) printf("(%1d)", counter );
-			else printf(" %c ", symbol );
-		}
+            int t;
+            int counter = 0;
+            for( t=0; t<num_cells; t++ ) {
+                int row = (int)(cells[t].pos_row);
+                int col = (int)(cells[t].pos_col);
+                if ( cells[t].alive && row == i && col == j ) {
+                    counter ++;
+                }
+            }
+            if ( counter > 9 ) printf("(M)" );
+            else if ( counter > 0 ) printf("(%1d)", counter );
+            else printf(" %c ", symbol );
+        }
 		printf("|\n");
 	}
 	printf("+");
