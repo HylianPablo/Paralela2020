@@ -562,6 +562,7 @@ int main(int argc, char *argv[])
 
 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
+		float *food_to_share_all = (float *)malloc(sizeof(float) * num_cells);
 		if (culture == NULL || culture_cells == NULL)
 		{
 			fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
