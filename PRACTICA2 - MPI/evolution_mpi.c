@@ -1,4 +1,4 @@
-/*
+/* 
  * Simplified simulation of life evolution
  *
  * Computacion Paralela, Grado en Informatica (Universidad de Valladolid)
@@ -23,7 +23,7 @@ typedef struct
 {
 	float pos_row, pos_col;		  // Position
 	float mov_row, mov_col;		  // Direction of movement
-	float choose_mov[3];		  // Genes: Probabilities of 0 turning-left; 1 advance; 2 turning-right
+	float choose_mov[3];		  // Genes: Probabilities of 0 turning - left; 1 advance; 2 turning - right
 	float storage;				  // Food/Energy stored
 	int age;					  // Number of steps that the cell has been alive
 	unsigned short random_seq[3]; // Status value of its particular random sequence
@@ -44,23 +44,23 @@ typedef struct
 
 /* 
  * Macro function to simplify accessing with two coordinates to a flattened array
- * 	This macro-function can be changed and/or optimized by the students
+ * 	This macro - function can be changed and/or optimized by the students
  *
  */
-#define accessMat(arr, exp1, exp2) arr[(int)(exp1)*columns + (int)(exp2)]
+#define accessMat(arr, exp1, exp2) arr[(int)(exp1) * columns + (int)(exp2) - my_begin]
 
-/*
+/* 
  * Function: Choose a new direction of movement for a cell
  * 	This function can be changed and/or optimized by the students
  */
 void cell_new_direction(Cell *cell)
 {
-	float angle = (float)(2 * M_PI * erand48(cell->random_seq));
-	cell->mov_row = sinf(angle);
-	cell->mov_col = cosf(angle);
+	float angle = (float)(2 * M_PI * erand48(cell - >random_seq));
+	cell - >mov_row = sinf(angle);
+	cell - >mov_col = cosf(angle);
 }
 
-/*
+/* 
  * Function: Mutation of the movement genes on a new cell
  * 	This function can be changed and/or optimized by the students
  */
@@ -71,40 +71,40 @@ void cell_mutation(Cell *cell)
 	 	1 Advance grows taking part of the Left part
 	 	2 Advance grows taking part of the Right part
 	 	3 Right grows taking part of the Advance part
-	*/
-	int mutation_type = (int)(4 * erand48(cell->random_seq));
+	 */
+	int mutation_type = (int)(4 * erand48(cell - >random_seq));
 	/* 2. Select the amount of mutation (up to 50%) */
-	float mutation_percentage = (float)(0.5 * erand48(cell->random_seq));
+	float mutation_percentage = (float)(0.5 * erand48(cell - >random_seq));
 	/* 3. Apply the mutation */
 	float mutation_value;
 	switch (mutation_type)
 	{
 	case 0:
-		mutation_value = cell->choose_mov[1] * mutation_percentage;
-		cell->choose_mov[1] -= mutation_value;
-		cell->choose_mov[0] += mutation_value;
+		mutation_value = cell - >choose_mov[1] * mutation_percentage;
+		cell - >choose_mov[1] -= mutation_value;
+		cell - >choose_mov[0] += mutation_value;
 		break;
 	case 1:
-		mutation_value = cell->choose_mov[0] * mutation_percentage;
-		cell->choose_mov[0] -= mutation_value;
-		cell->choose_mov[1] += mutation_value;
+		mutation_value = cell - >choose_mov[0] * mutation_percentage;
+		cell - >choose_mov[0] -= mutation_value;
+		cell - >choose_mov[1] += mutation_value;
 		break;
 	case 2:
-		mutation_value = cell->choose_mov[2] * mutation_percentage;
-		cell->choose_mov[2] -= mutation_value;
-		cell->choose_mov[1] += mutation_value;
+		mutation_value = cell - >choose_mov[2] * mutation_percentage;
+		cell - >choose_mov[2] -= mutation_value;
+		cell - >choose_mov[1] += mutation_value;
 		break;
 	case 3:
-		mutation_value = cell->choose_mov[1] * mutation_percentage;
-		cell->choose_mov[1] -= mutation_value;
-		cell->choose_mov[2] += mutation_value;
+		mutation_value = cell - >choose_mov[1] * mutation_percentage;
+		cell - >choose_mov[1] -= mutation_value;
+		cell - >choose_mov[2] += mutation_value;
 		break;
 	default:
 		fprintf(stderr, "Error: Imposible type of mutation\n");
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 	/* 4. Correct potential precision problems */
-	cell->choose_mov[2] = 1.0f - cell->choose_mov[1] - cell->choose_mov[0];
+	cell - >choose_mov[2] = 1.0f - cell - >choose_mov[1] - cell - >choose_mov[0];
 }
 
 #ifdef DEBUG
@@ -121,10 +121,10 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 	int i, j;
 
 	printf("Iteration: %d\n", iteration);
-	printf("+");
+	printf(" + ");
 	for (j = 0; j < columns; j++)
 		printf("---");
-	printf("+\n");
+	printf(" + \n");
 	for (i = 0; i < rows; i++)
 	{
 		printf("|");
@@ -132,9 +132,9 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 		{
 			char symbol;
 			// if (accessMat(culture, i, j) >= 20)
-			//     symbol = '+';
+			//     symbol = ' + ';
 			// else if (accessMat(culture, i, j) >= 10)
-			//     symbol = '*';
+			//     symbol = ' * ';
 			// else if (accessMat(culture, i, j) >= 5)
 			//     symbol = '.';
 			// else
@@ -161,10 +161,10 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 		}
 		printf("|\n");
 	}
-	printf("+");
+	printf(" + ");
 	for (j = 0; j < columns; j++)
 		printf("---");
-	printf("+\n");
+	printf(" + \n");
 	printf("Num_cells_alive: %04d\nHistory( Cells: %04d, Dead: %04d, Max.alive: %04d, Max.new: %04d, Max.dead: %04d, Max.age: %04d, Max.food: %6f)\n\n", 
 		   num_cells_alive, 
 		   sim_stat.history_total_cells, 
@@ -177,7 +177,7 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 }
 #endif
 
-/*
+/* 
  * Function: Print usage line in stderr
  */
 void show_usage(char *program_name)
@@ -188,7 +188,7 @@ void show_usage(char *program_name)
 	fprintf(stderr, "\n");
 }
 
-/*
+/* 
  * MAIN PROGRAM
  */
 int main(int argc, char *argv[])
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
 	{
 		if (argc < 17)
 		{
-			fprintf(stderr, "-- Error in number of special-food-spot arguments in the command line\n\n");
+			fprintf(stderr, "-- Error in number of special - food - spot arguments in the command line\n\n");
 			show_usage(argv[0]);
 			MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 		}
@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
 			food_spot_density = atof(argv[15]);
 			food_spot_level = atof(argv[16]);
 
-			// Check non-used trailing arguments
+			// Check non - used trailing arguments
 			if (argc > 17)
 			{
 				fprintf(stderr, "-- Error: too many arguments in the command line\n\n");
@@ -328,22 +328,28 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
 	/* 1.10. Print random seed of the initial cells */
-	/*
+	/* 
 	printf("Initial cells random seeds: %d\n", num_cells);
 	for( i=0; i<num_cells; i++)
 		printf("\tCell %d, Random seq: %hu, %hu, %hu\n", i, cells[i].random_seq[0], cells[i].random_seq[1], cells[i].random_seq[2]);
-	*/
+	 */
 #endif // DEBUG
 
 	/* 2. Start global timer */
 	MPI_Barrier(MPI_COMM_WORLD);
 	double ttotal = cp_Wtime();
 
-/*
+/* 
  *
  * START HERE: DO NOT CHANGE THE CODE ABOVE THIS POINT
  *
  */
+
+/*
+ * Macro function to check if a point in a matrix belongs to this process' section.
+ *
+ */
+#define mine(exp1, exp2) (exp1 * columns + exp2) >= my_begin && (exp1 * columns + exp2) < my_begin + my_size
 
 /* 
  * Macro function measure execution times for each section, if not in a leaderboard
@@ -372,7 +378,7 @@ int main(int argc, char *argv[])
 	double time4_9 = 0.0;
 #endif
 
-	/*
+	/* 
 	 * Matrix division and MPI constants initialization.
 	 */
 	int nprocs;
@@ -388,7 +394,7 @@ int main(int argc, char *argv[])
 #ifndef CP_TABLON
 	printf("Soy el rank %d, empiezo en %d y mi tamaño es %d\n", rank, my_begin, my_size);
 	if(rank==0)
-		printf("El tamaño total es %d\n", rows*columns);
+		printf("El tamaño total es %d\n", rows * columns);
 #endif
 
 
@@ -512,8 +518,9 @@ int main(int argc, char *argv[])
 #endif // DEBUG
 
 	/* 4. Simulation */
-	/*
+	/* 
 	 * Simulation variables initialization:
+	 *
 	 */
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
@@ -540,11 +547,10 @@ int main(int argc, char *argv[])
 		{
 			int row = (int)(rows * rand4_1[3 * i]);
 			int col = (int)(columns * rand4_1[3 * i + 1]);
-			if ((row * columns + col) < my_begin + my_size && (row * columns + col) >= my_begin)
+			if (mine(row, col))
 			{ //Funciona sólo para divisiones enteras
 				float food = (float)(food_level * rand4_1[3 * i + 2]);
-				//accessMat(culture, row, col) += food;
-				culture[(row*columns+col)-my_begin]+=food;
+				accessMat(culture, row, col) += food;
 			}
 		}
 		// In the special food spot
@@ -561,11 +567,10 @@ int main(int argc, char *argv[])
 			{
 				int row = food_spot_row + (int)(food_spot_size_rows * rand4_1[3 * i]);
 				int col = food_spot_col + (int)(food_spot_size_cols * rand4_1[3 * i + 1]);
-				if ((row * columns + col) < my_begin + my_size && (row * columns + col) >= my_begin)
+				if (mine(row, col))
 				{
 					float food = (float)(food_spot_level * rand4_1[3 * i + 2]);
-					culture[(row*columns+col)-my_begin]+=food;
-					//accessMat(culture, row, col) += food;
+					accessMat(culture, row, col) += food;
 				}
 			}
 		}
@@ -623,7 +628,7 @@ int main(int argc, char *argv[])
 					}
 					// else do not change the direction
 
-					/* 4.3.3. Update position moving in the choosen direction*/
+					/* 4.3.3. Update position moving in the choosen direction */
 					cells[i].pos_row += cells[i].mov_row;
 					cells[i].pos_col += cells[i].mov_col;
 					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
@@ -639,12 +644,11 @@ int main(int argc, char *argv[])
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				if ((cells[i].pos_row * columns + cells[i].pos_col) < my_begin + my_size && (cells[i].pos_row * columns + cells[i].pos_col) >= my_begin)
+				if (mine(cells[i].pos_row, cells[i].pos_col))
 				{
-					culture_cells[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin]+=1;
-					//accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+					accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
 					/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-					food_to_share[i] = culture_cells[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin];
+					food_to_share[i] = accessMat(culture_cells, cells[i].pos_row, + cells[i].pos_col);
 				}
 			}
 		} // End cell movements
@@ -668,9 +672,9 @@ int main(int argc, char *argv[])
 				/* 4.4.1. Food harvesting */
 				float food = food_to_share[i];
 
-				//if ((cells[i].pos_row * columns + cells[i].pos_col) < my_begin + my_size && (cells[i].pos_row * columns + cells[i].pos_col) >= my_begin)
+				//if (mine(cells[i].pos_row, cells[i].pos_col))
 				//{
-					short count = culture_cells[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin];
+					short count = accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
 					
 					float my_food = food / count;
 					cells[i].storage += my_food;
@@ -725,10 +729,9 @@ int main(int argc, char *argv[])
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i = 0; i < num_cells; i++)
 		{
-			if (cells[i].alive && cells[i].pos_row * columns + cells[i].pos_col < my_begin + my_size && cells[i].pos_row * columns + cells[i].pos_col >= my_begin)
+			if (cells[i].alive && mine(cells[i].pos_row, cells[i].pos_col))
 			{
-				//accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
-				culture[(int)(cells[i].pos_row*columns+cells[i].pos_col)-my_begin] = 0.0f;
+				accessMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
 			}
 		}
 		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
@@ -766,7 +769,7 @@ int main(int argc, char *argv[])
 		free(new_cells);
 		update_time(time4_7);
 
-		/* 4.8. Decrease non-harvested food */
+		/* 4.8. Decrease non - harvested food */
 		update_time(time4_8);
 		current_max_food = 0.0f;
 		for (i = 0; i < my_size; i++)
@@ -826,7 +829,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	/*
+/* 
  *
  * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
  *
