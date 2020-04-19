@@ -55,9 +55,9 @@ typedef struct
  */
 void cell_new_direction(Cell *cell)
 {
-	float angle = (float)(2 * M_PI * erand48(cell - >random_seq));
-	cell - >mov_row = sinf(angle);
-	cell - >mov_col = cosf(angle);
+	float angle = (float)(2 * M_PI * erand48(cell->random_seq));
+	cell->mov_row = sinf(angle);
+	cell->mov_col = cosf(angle);
 }
 
 /* 
@@ -72,39 +72,39 @@ void cell_mutation(Cell *cell)
 	 	2 Advance grows taking part of the Right part
 	 	3 Right grows taking part of the Advance part
 	 */
-	int mutation_type = (int)(4 * erand48(cell - >random_seq));
+	int mutation_type = (int)(4 * erand48(cell->random_seq));
 	/* 2. Select the amount of mutation (up to 50%) */
-	float mutation_percentage = (float)(0.5 * erand48(cell - >random_seq));
+	float mutation_percentage = (float)(0.5 * erand48(cell->random_seq));
 	/* 3. Apply the mutation */
 	float mutation_value;
 	switch (mutation_type)
 	{
 	case 0:
-		mutation_value = cell - >choose_mov[1] * mutation_percentage;
-		cell - >choose_mov[1] -= mutation_value;
-		cell - >choose_mov[0] += mutation_value;
+		mutation_value = cell->choose_mov[1] * mutation_percentage;
+		cell->choose_mov[1] -= mutation_value;
+		cell->choose_mov[0] += mutation_value;
 		break;
 	case 1:
-		mutation_value = cell - >choose_mov[0] * mutation_percentage;
-		cell - >choose_mov[0] -= mutation_value;
-		cell - >choose_mov[1] += mutation_value;
+		mutation_value = cell->choose_mov[0] * mutation_percentage;
+		cell->choose_mov[0] -= mutation_value;
+		cell->choose_mov[1] += mutation_value;
 		break;
 	case 2:
-		mutation_value = cell - >choose_mov[2] * mutation_percentage;
-		cell - >choose_mov[2] -= mutation_value;
-		cell - >choose_mov[1] += mutation_value;
+		mutation_value = cell->choose_mov[2] * mutation_percentage;
+		cell->choose_mov[2] -= mutation_value;
+		cell->choose_mov[1] += mutation_value;
 		break;
 	case 3:
-		mutation_value = cell - >choose_mov[1] * mutation_percentage;
-		cell - >choose_mov[1] -= mutation_value;
-		cell - >choose_mov[2] += mutation_value;
+		mutation_value = cell->choose_mov[1] * mutation_percentage;
+		cell->choose_mov[1] -= mutation_value;
+		cell->choose_mov[2] += mutation_value;
 		break;
 	default:
 		fprintf(stderr, "Error: Imposible type of mutation\n");
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 	/* 4. Correct potential precision problems */
-	cell - >choose_mov[2] = 1.0f - cell - >choose_mov[1] - cell - >choose_mov[0];
+	cell->choose_mov[2] = 1.0f - cell->choose_mov[1] - cell->choose_mov[0];
 }
 
 #ifdef DEBUG
