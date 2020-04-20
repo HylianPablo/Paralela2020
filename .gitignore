@@ -1,1 +1,7 @@
+# Ignore files wirhout extension (3 lines):
+*
+!*.*
+!*/
+
+*.out
 OpenMP/x.txt
