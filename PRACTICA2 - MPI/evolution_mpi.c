@@ -814,6 +814,10 @@ int main(int argc, char *argv[]) {
 #endif // DEBUG
 	}
 
+	// Let's not be bad...
+	free(new_cells);
+	free(food_to_share);
+
 #ifndef CP_TABLON
 	if (rank == 0)
 	{
