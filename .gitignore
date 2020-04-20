@@ -2,6 +2,7 @@
 *
 !*.*
 !*/
+!*/Makefile
 
 *.out
 OpenMP/x.txt
