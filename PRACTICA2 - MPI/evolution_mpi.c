@@ -16,7 +16,7 @@
 #include<stdbool.h>
 #include<cputils.h>
 #include<mpi.h>
-#include<stddef.h.h>
+#include<stddef.h>
 
 /* Structure to store data of a cell */
 typedef struct {
