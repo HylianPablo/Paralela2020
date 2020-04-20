@@ -530,7 +530,7 @@ int main(int argc, char *argv[]) {
 			if (mine(row, col))
 			{ //Funciona sólo para divisiones enteras
 				float food = (float)(food_level * rand4_1[3 * i + 2]);
-				accesDivMat(culture, row, col) += food;
+				accessDivMat(culture, row, col) += food;
 			}
 		}
 		// In the special food spot
@@ -550,7 +550,7 @@ int main(int argc, char *argv[]) {
 				if (mine(row, col))
 				{
 					float food = (float)(food_spot_level * rand4_1[3 * i + 2]);
-					accesDivMat(culture, row, col) += food;
+					accessDivMat(culture, row, col) += food;
 				}
 			}
 		}
@@ -629,20 +629,23 @@ int main(int argc, char *argv[]) {
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
 				if (mine(cells[i].pos_row, cells[i].pos_col))
 				{
-					accesDivMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+					accessDivMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
 					my_cells++;
-					/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 				}
 			}
 		} // End cell movements
-		int n =0;
-		float *food_to_share_aux = (float *) malloc( my_cells * sizeof(float));
+
+		/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+		int n = 0;
+		float *food_to_share_aux = (float *) malloc(my_cells * sizeof(float));
 		int *sizeAux = malloc (sizeof(int) * nprocs);
-		for(i=0; i<num_cells;i++){
-			if(mine(cells[i].pos_row, cells[i].pos_col)){
-				food_to_share_aux[n] = accesDivMat(culture, cells[i].pos_row, cells[i].pos_col);
+
+		for(i=0; i<num_cells;i++)
+		{
+			if(mine(cells[i].pos_row, cells[i].pos_col))
+			{
+				food_to_share_aux[n++] = accessDivMat(culture, cells[i].pos_row, cells[i].pos_col);
 				printf("Mi rango es %d y el valor de ftsaux es %f, posiciones: %f (row) , %f (col) \n",rank,food_to_share_aux[n],cells[i].pos_row,cells[i].pos_col);
-				n++;
 			}
 		}
 		MPI_Allgather(&n,1,MPI_INT,sizeAux,1,MPI_INT,MPI_COMM_WORLD);
@@ -697,7 +700,7 @@ int main(int argc, char *argv[]) {
 
 				//if (mine(cells[i].pos_row, cells[i].pos_col))
 				//{
-					short count = accesDivMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
+					short count = accessDivMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
 					
 					float my_food = food / count;
 					cells[i].storage += my_food;
@@ -750,20 +753,13 @@ int main(int argc, char *argv[]) {
 		}
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i = 0; i < free_position; i++)
-		{
 			if (mine(cells[i].pos_row, cells[i].pos_col)) //antes comprobaba tambien cells.alive
-			{
-				accesDivMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
-			}
-		}
-		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
-		//free(food_to_share);
+				accessDivMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
 		update_time(time4_5);
 
 		
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
 		num_cells = free_position;
-		//update_time(time4_6);
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		update_time(time4_7);
@@ -774,7 +770,6 @@ int main(int argc, char *argv[]) {
 				cells[num_cells + j] = new_cells[j];
 			num_cells += step_new_cells;
 		}
-		//free(new_cells);
 		update_time(time4_7);
 
 		/* 4.8. Decrease non - harvested food */
@@ -792,7 +787,6 @@ int main(int argc, char *argv[]) {
 		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
 		if (rank == 0)
 			current_max_food = current_max_food_root;
-
 		update_time(time4_8);
 
 		/* 4.9. Statistics */
@@ -815,8 +809,8 @@ int main(int argc, char *argv[]) {
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
-			if(rank==0)
-				print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
+		if(rank==0)
+			print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
 #endif // DEBUG
 	}
 
