@@ -344,18 +344,45 @@ int main(int argc, char *argv[])
  *
  */
 
+/*
+ * Minimum of two numbers, as a macro function.
+ * It doesn't get any simpler than that. 
+ *
+ */
+#define min(a, b) (a < b ? a : b)
+
+/*
+ * Same as the last macro, but with maximum.
+ * Because I feel like it.
+ *
+ */
+#define max(a, b) (a > b ? a : b)
+
 /* 
  * Macro function to simplify accessing with two coordinates to a flattened array.
  * 	This version takes into account matrix division by rank.
  *
  */
-#define accessDivMat(arr, exp1, exp2) arr[(int)(exp1)*columns + (int)(exp2)-my_begin]
+#define accessMatSec(arr, exp1, exp2) arr[(int)(exp1)*columns + (int)(exp2)-my_begin]
+
+/*
+ * Macro function to get the exact offset in an array for a cell.
+ *
+ */
+#define arrayPos(cell) ((int)cell.pos_row*columns + (int)cell.pos_col)
 
 /*
  * Macro function to check if a point in a matrix belongs to this process' section.
  *
  */
-#define mine(exp1, exp2) ((int)exp1 * columns + (int)exp2) >= my_begin && ((int)exp1 * columns + (int)exp2) < my_begin + my_size
+#define mine(exp1, exp2) (((int)exp1 * columns + (int)exp2) >= my_begin && ((int)exp1 * columns + (int)exp2) < my_begin + my_size)
+
+/*
+ * Macro functions to get the matrix section a cell belongs to.
+ *
+ */
+#define potentialSection(cell) (arrayPos(cell)/fraction)
+#define section(cell) (potentialSection(cell) - ((potentialSection(cell)*fraction - arrayPos(cell) < min(remainder, potentialSection(cell))) && potentialSection(cell) != 0))
 
 /* 
  * Macro function measure execution times for each section, if not in a leaderboard
@@ -395,8 +422,8 @@ int main(int argc, char *argv[])
 	int remainder = (rows * columns) % nprocs;
 	int my_size = fraction + (rank < remainder);
 
-	int max_ceil = rank > remainder ? remainder : rank;
-	int max_floor = rank > remainder ? rank - remainder : 0;
+	int max_ceil = min(rank, remainder);
+	int max_floor = max(rank - remainder, 0);
 	int my_begin = max_ceil * (fraction + 1) + max_floor * fraction;
 
 #ifndef CP_TABLON
@@ -405,8 +432,10 @@ int main(int argc, char *argv[])
 		printf("El tamaño total es %d\n", rows * columns);
 #endif
 
+	int total_cells = num_cells;
+
 	//STRUCT -- CELLS
-	// Create datatype for Rectangle
+	// Create datatype for Cells
 	// Number of field blocks
 	int fields = 9;
 	int tag = 1000;
@@ -477,92 +506,55 @@ int main(int argc, char *argv[])
 
 	// 3.2
 	update_time(time3_2);
-	if (rank == 0)
+	num_cells = 0;
+	for (i = 0; i < total_cells; i++)
 	{
-		int *arrAuxCells = malloc(sizeof(int) * nprocs);
-		for (i = 0; i < nprocs; i++)
+		// Initial age: Between 1 and 20
+		cells[i].age = 1 + (int)(19 * erand48(cells[i].random_seq));
+		// Initial storage: Between 10 and 20 units
+		cells[i].storage = (float)(10 + 10 * erand48(cells[i].random_seq));
+		// Initial position: Anywhere in the culture arena
+		cells[i].pos_row = (float)(rows * erand48(cells[i].random_seq));
+		cells[i].pos_col = (float)(columns * erand48(cells[i].random_seq));
+
+		// Calculate which section this cells belongs to:
+		if (rank == section(cells[i]))
 		{
-			arrAuxCells[i] = 0;
-		}
-		for (i = 0; i < num_cells; i++)
-		{
+			num_cells++;
+
 			cells[i].alive = true;
-			// Initial age: Between 1 and 20
-			cells[i].age = 1 + (int)(19 * erand48(cells[i].random_seq));
-			// Initial storage: Between 10 and 20 units
-			cells[i].storage = (float)(10 + 10 * erand48(cells[i].random_seq));
-			// Initial position: Anywhere in the culture arena
-			cells[i].pos_row = (float)(rows * erand48(cells[i].random_seq));
-			cells[i].pos_col = (float)(columns * erand48(cells[i].random_seq));
 			// Movement direction: Unity vector in a random direction
 			cell_new_direction(&cells[i]);
 			// Movement genes: Probabilities of advancing or changing direction: The sum should be 1.00
 			cells[i].choose_mov[0] = 0.33f;
 			cells[i].choose_mov[1] = 0.34f;
 			cells[i].choose_mov[2] = 0.33f;
-
-			int posInArr = (int)cells[i].pos_row * columns + (int)cells[i].pos_col;
-			int posInSection = floor(posInArr / fraction);
-			if ((posInSection)*fraction - posInArr < (remainder < posInSection ? remainder : posInSection) && posInSection != 0)
-			{
-				posInSection--;
-			}
-			arrAuxCells[posInSection]++;
 		}
-
-		Cell *_ = malloc(0);
-		for (i = 1; i < nprocs; i++)
+		else
 		{
-			MPI_Send(&arrAuxCells[i], 1, MPI_INT, i, tag, MPI_COMM_WORLD);
-			_ = realloc(_, sizeof(Cell) * arrAuxCells[i]);
-			int k = 0;
-			for (j = 0; j < num_cells; j++)
-			{
-				int posInArr = (int)cells[i].pos_row * columns + (int)cells[i].pos_col;
-				int posInSection = floor(posInArr / fraction);
-				if ((posInSection)*fraction - posInArr < (remainder < posInSection ? remainder : posInSection) && posInSection != 0)
-				{
-					posInSection--;
-				}
-				if(posInSection==i){
-					_[k]=cells[j];
-					k++;
-				}
-			}
-			MPI_Send(_, arrAuxCells[i], MPI_CellExt, i, tag, MPI_COMM_WORLD);
+			cells[i].alive = false;
 		}
-		_ = realloc(_,sizeof(Cell)*arrAuxCells[0]);
-		int k=0;
-		for (j = 0; j < num_cells; j++)
-		{
-			int posInArr = (int)cells[i].pos_row * columns + (int)cells[i].pos_col;
-			int posInSection = floor(posInArr / fraction);
-			if (posInSection == 0)
-			{
-				posInSection--;
-			}
-			if(posInSection==0){
-				_[k]=cells[j];
-				k++;
-			}
-		}
-		free(cells);
-		num_cells=arrAuxCells[0];
-		free(arrAuxCells);
-		cells=_;
 	}
-	if (rank != 0)
+
+	// Clean non-belonging cells (4.6):
+	int free_position = 0;
+	for (i = 0; i < total_cells; i++)
 	{
-		MPI_Recv(&num_cells, 1, MPI_INT, 0, tag, MPI_COM_WORLD, stat);
-		Cell *cells = malloc(sizeof(Cell) * num_cells);
-		MPI_Recv(cells, num_cells, MPI_CellExt, 0, tag, MPI_COMM_WORLD, stat);
+		if (cells[i].alive)
+		{
+			if (free_position != i)
+			{
+				cells[free_position] = cells[i];
+			}
+			free_position++;
+		}
 	}
-
+	cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells));	
 	update_time(time3_2);
 
 	// Statistics: Initialize total number of cells, and max. alive
-	sim_stat.history_total_cells = num_cells;
-	sim_stat.history_max_alive_cells = num_cells;
+	sim_stat.history_total_cells = total_cells;
+	sim_stat.history_max_alive_cells = total_cells;
 
 #ifdef DEBUG
 	/* Show initial cells data */
@@ -592,7 +584,7 @@ int main(int argc, char *argv[])
 	 *
 	 */
 	float current_max_food = 0.0f;
-	int num_cells_alive = num_cells;
+	int num_cells_alive = total_cells;
 	int iter;
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
@@ -619,7 +611,7 @@ int main(int argc, char *argv[])
 			if (mine(row, col))
 			{ //Funciona sólo para divisiones enteras
 				float food = (float)(food_level * rand4_1[3 * i + 2]);
-				accessDivMat(culture, row, col) += food;
+				accessMatSec(culture, row, col) += food;
 			}
 		}
 		// In the special food spot
@@ -639,7 +631,7 @@ int main(int argc, char *argv[])
 				if (mine(row, col))
 				{
 					float food = (float)(food_spot_level * rand4_1[3 * i + 2]);
-					accessDivMat(culture, row, col) += food;
+					accessMatSec(culture, row, col) += food;
 				}
 			}
 		}
@@ -651,134 +643,146 @@ int main(int argc, char *argv[])
 		int step_dead_cells_root;
 		int max_age = 0;
 		int max_age_root;
-		int my_cells = 0;
-		int *cellsToSend = malloc(sizeof(int)*nprocs);
-		int *numCellsArr = malloc(sizeof(int) * num_cells);
-		for(i=0;i<nprocs;i++){
-			cellsToSend[i]=0;
+		int *cell_destiny = malloc(num_cells * sizeof(int));
+		int *cells_moved_to = malloc(nprocs * sizeof(int));
+		for(i = 0; i < nprocs; i++)
+		{
+			cells_moved_to[i]=0;
 		}
+
 		for (i = 0; i < num_cells; i++)
 		{
-			if (cells[i].alive)
+			// Antes se comprobaba si cells[i].alive
+			// (Aquí las células siempre están vivas.)
+			cells[i].age++;
+			// Statistics: Max age of a cell in the simulation history
+			if (cells[i].age > sim_stat.history_max_age)
+				sim_stat.history_max_age = cells[i].age;
+
+			/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
+			if (cells[i].storage < 0.1f)
 			{
-				cells[i].age++;
-				// Statistics: Max age of a cell in the simulation history
-				if (cells[i].age > sim_stat.history_max_age)
-					sim_stat.history_max_age = cells[i].age;
+				// Cell has died
+				cells[i].alive = false;
+				step_dead_cells++;
+				continue;
+			}
+			if (cells[i].storage < 1.0f)
+			{
+				// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
+				cells[i].storage -= 0.2f;
+			}
+			else
+			{
+				// Consume energy to move
+				cells[i].storage -= 1.0f;
 
-				/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
-				if (cells[i].storage < 0.1f)
+				/* 4.3.2. Choose movement direction */
+				float prob = (float)erand48(cells[i].random_seq);
+				if (prob < cells[i].choose_mov[0])
 				{
-					// Cell has died
-					cells[i].alive = false;
-					//num_cells_alive--;
-					step_dead_cells++;
-					continue;
+					// Turn left (90 degrees)
+					float tmp = cells[i].mov_col;
+					cells[i].mov_col = cells[i].mov_row;
+					cells[i].mov_row = -tmp;
 				}
-				if (cells[i].storage < 1.0f)
+				else if (prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1])
 				{
-					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
-					cells[i].storage -= 0.2f;
+					// Turn right (90 degrees)
+					float tmp = cells[i].mov_row;
+					cells[i].mov_row = cells[i].mov_col;
+					cells[i].mov_col = -tmp;
 				}
-				else
-				{
-					// Consume energy to move
-					cells[i].storage -= 1.0f;
+				// else do not change the direction
 
-					/* 4.3.2. Choose movement direction */
-					float prob = (float)erand48(cells[i].random_seq);
-					if (prob < cells[i].choose_mov[0])
-					{
-						// Turn left (90 degrees)
-						float tmp = cells[i].mov_col;
-						cells[i].mov_col = cells[i].mov_row;
-						cells[i].mov_row = -tmp;
-					}
-					else if (prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1])
-					{
-						// Turn right (90 degrees)
-						float tmp = cells[i].mov_row;
-						cells[i].mov_row = cells[i].mov_col;
-						cells[i].mov_col = -tmp;
-					}
-					// else do not change the direction
+				/* 4.3.3. Update position moving in the choosen direction */
+				cells[i].pos_row += cells[i].mov_row;
+				cells[i].pos_col += cells[i].mov_col;
+				// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
 
-					/* 4.3.3. Update position moving in the choosen direction */
-					cells[i].pos_row += cells[i].mov_row;
-					cells[i].pos_col += cells[i].mov_col;
-					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
-
-					if (cells[i].pos_row < 0)
-						cells[i].pos_row += rows;
-					if (cells[i].pos_row >= rows)
-						cells[i].pos_row -= rows;
-					if (cells[i].pos_col < 0)
-						cells[i].pos_col += columns;
-					if (cells[i].pos_col >= columns)
-						cells[i].pos_col -= columns;
-				}
-
+				if (cells[i].pos_row < 0)
+					cells[i].pos_row += rows;
+				if (cells[i].pos_row >= rows)
+					cells[i].pos_row -= rows;
+				if (cells[i].pos_col < 0)
+					cells[i].pos_col += columns;
+				if (cells[i].pos_col >= columns)
+					cells[i].pos_col -= columns;
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
 				if (mine(cells[i].pos_row, cells[i].pos_col))
 				{
-					accessDivMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
-					//my_cells++;
-				}else{
-					int posInArr = (int)cells[i].pos_row * columns + (int)cells[i].pos_col;
-					int posInSection = floor(posInArr / fraction);
-					if ((posInSection)*fraction - posInArr < (remainder < posInSection ? remainder : posInSection) && posInSection != 0){
-						posInSection--;
-					}
-					cellsToSend[posInSection]++;
-					numCellsArr[i]=posInSection;  //A que proceso se envia la celula i
-
+					accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+				}
+				else
+				{
+					int cell_section = section(cells[i]);
+					cells_moved_to[cell_section]++;
+					cell_destiny[i] = cell_section;
 				}
 			}
 		} // End cell movements
 
-		int *cellsRecv = malloc(sizeof(int)*nprocs);
-		for(i=0;i<nprocs;i++){
-			MPI_Isend(&cellsToSend[i],1,MPI_INT,i,tag,MPI_COMM_WORLD,request);
-			MPI_Irecv(&cellsRecv[i],1,MPI_INT,i,MPI_COMM_WORLD,request);
-			if(cellsToSend[i]>0){
-				MPI_Isend();
+		// Create cells to send matrix:
+		Cell **cells_to_send = (Cell **)malloc(nprocs * sizeof(Cell *));
+
+		// Send/receive number of cells moved:
+		int *cells_moved_from = (int *)malloc(nprocs * sizeof(int));
+		int *index = (int *)malloc(nprocs * sizeof(int));
+		for(i = 0; i < nprocs; i++)
+		{
+			if (rank == i)
+			{
+				for (j = 0; j < nprocs; j++)
+				{
+					if (rank != j) 
+					{
+						MPI_Send(&cells_moved_to[j], 1, MPI_INT, j, tag, MPI_COMM_WORLD);
+						cells_to_send[j] = (Cell *)malloc(cells_moved_to[j] * sizeof(Cell));
+						index[j] = 0;
+					}
+				}
+			}
+			else
+			{
+				MPI_Recv(&cells_moved_from[i], 1, MPI_INT, i, tag, MPI_COMM_WORLD, &stat);
 			}
 		}
-		for(i=0;i<nprocs;i++){
-			if(cellsRecv[i]!=0){
 
-			}
-		}
-
-		/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-		/*int n = 0;
-		float *food_to_share_aux = (float *)malloc(my_cells * sizeof(float));
-		int *sizeAux = malloc(sizeof(int) * nprocs);
-
+		// Fill cells to send matrix:
 		for (i = 0; i < num_cells; i++)
 		{
-			if (mine(cells[i].pos_row, cells[i].pos_col))
+			if (!mine(cells[i].pos_row, cells[i].pos_col))
 			{
-				food_to_share_aux[n++] = accessDivMat(culture, cells[i].pos_row, cells[i].pos_col);
-				//printf("Mi rango es %d y el valor de ftsaux es %f, posiciones: %f (row) , %f (col) \n",rank,food_to_share_aux[n],cells[i].pos_row,cells[i].pos_col);
+				cells_to_send[cell_destiny[i]][index[cell_destiny[i]]++] = cells[i];
+				// Menuda santa locura.
 			}
 		}
-		MPI_Allgather(&my_cells, 1, MPI_INT, sizeAux, 1, MPI_INT, MPI_COMM_WORLD);
-		int *offsetAux = (int *)malloc(sizeof(int) * nprocs);
-		int offsetIni = 0;
+		free(cell_destiny);
+		free(index);
+
+		// Send/receive cells moved:
 		for (i = 0; i < nprocs; i++)
 		{
-			offsetAux[i] = offsetIni;
-			offsetIni += sizeAux[i];
+			if (rank == i)
+			{
+				for (j = 0; j < nprocs; j++)
+				{
+					if (rank != j)
+					{
+						MPI_Send(&cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
+						free(cells_to_send[j]);
+					}
+				}
+				free(cells_moved_to);
+				free(cells_to_send);
+			}
+			else
+			{
+				MPI_Recv(new_cells, cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
+			}
 		}
-
-		MPI_Allgatherv(food_to_share_aux, my_cells, MPI_FLOAT, food_to_share, sizeAux, offsetAux, MPI_FLOAT, MPI_COMM_WORLD);
-
-		/*for(i=0;i<num_cells;i++){
-			printf("%d %d %d Valor de food_to_share: %f, posiciones: %f (row) , %f (col) \n",iter,i,rank, food_to_share[i],cells[i].pos_row,cells[i].pos_col);
-		}
-
-		*/
+		free(cells_moved_from);
+		// TODO: num_cells_alive MUY A FONDO.
 
 		MPI_Allreduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		MPI_Allreduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
@@ -791,7 +795,7 @@ int main(int argc, char *argv[])
 		/* 4.6. Clean dead cells from the original list */
 		update_time(time4_6);
 		// 4.6.1. Move alive cells to the left to substitute dead cells
-		int free_position = 0;
+		free_position = 0;
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
@@ -818,7 +822,7 @@ int main(int argc, char *argv[])
 
 			//if (mine(cells[i].pos_row, cells[i].pos_col))
 			//{
-			short count = accessDivMat(culture_cells, cells[i].pos_row, cells[i].pos_col);
+			short count = accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col);
 
 			float my_food = food / count;
 			cells[i].storage += my_food;
@@ -872,7 +876,7 @@ int main(int argc, char *argv[])
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i = 0; i < free_position; i++)
 			if (mine(cells[i].pos_row, cells[i].pos_col)) //antes comprobaba tambien cells.alive
-				accessDivMat(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
+				accessMatSec(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
 		update_time(time4_5);
 
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
