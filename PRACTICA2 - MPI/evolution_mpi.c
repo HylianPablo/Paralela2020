@@ -767,7 +767,7 @@ int main(int argc, char *argv[])
 			{
 				for (j = 0; j < nprocs; j++)
 				{
-					if (rank != j)
+					if (cells_moved_to[j] > 0)
 					{
 						MPI_Send(&cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
 						free(cells_to_send[j]);
@@ -776,9 +776,12 @@ int main(int argc, char *argv[])
 				free(cells_moved_to);
 				free(cells_to_send);
 			}
-			else
+			else if (cells_moved_from[i] > 0)
 			{
 				MPI_Recv(new_cells, cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
+				// TODO: juntar new_cells en cells.
+				// Ahora mismo esto está mal: se está sobreescribiendo new_cells todo el rato.
+				// TODO: AccessMat para new_cells.
 			}
 		}
 		free(cells_moved_from);
