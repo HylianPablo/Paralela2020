@@ -111,67 +111,55 @@ void cell_mutation(Cell *cell)
 /* 
  * Function: Print the current state of the simulation 
  */
-void print_status(int iteration, int rows, int columns, float *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat)
-{
+void print_status( int iteration, int rows, int columns, float *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
 	/* 
 	 * You don't need to optimize this function, it is only for pretty printing and debugging purposes.
 	 * It is not compiled in the production versions of the program.
 	 * Thus, it is never used when measuring times in the leaderboard
 	 */
-	int i, j;
+	int i,j;
 
-	printf("Iteration: %d\n", iteration);
+	printf("Iteration: %d\n", iteration );
 	printf("+");
-	for (j = 0; j < columns; j++)
-		printf("---");
+	for( j=0; j<columns; j++ ) printf("---");
 	printf("+\n");
-	for (i = 0; i < rows; i++)
-	{
+	for( i=0; i<rows; i++ ) {
 		printf("|");
-		for (j = 0; j < columns; j++)
-		{
-			char symbol;
-			// if (accessMat(culture, i, j) >= 20)
-			//     symbol = '+';
-			// else if (accessMat(culture, i, j) >= 10)
-			//     symbol = '*';
-			// else if (accessMat(culture, i, j) >= 5)
-			//     symbol = '.';
-			// else
-			//     symbol = ' ';
+		for( j=0; j<columns; j++ ) {
+            char symbol;
+            if ( accessMat( culture, i, j ) >= 20 ) symbol = '+';
+            else if ( accessMat( culture, i, j ) >= 10 ) symbol = '*';
+            else if ( accessMat( culture, i, j ) >= 5 ) symbol = '.';
+            else symbol = ' ';
 
-			int t;
-			double counter = 0;
-			for (t = 0; t < num_cells; t++)
-			{
-				int row = (int)(cells[t].pos_row);
-				int col = (int)(cells[t].pos_col);
-				if (cells[t].alive && row == i && col == j)
-				{
-					counter += cells[t].storage;
-				}
-			}
-			if (counter > 0)
-				printf("(%05.2f)", counter);
-			else
-				//printf(" %c ", symbol);
-				printf(" %05.2f ", (accessMat(culture, i, j)));
-		}
+            int t;
+            int counter = 0;
+            for( t=0; t<num_cells; t++ ) {
+                int row = (int)(cells[t].pos_row);
+                int col = (int)(cells[t].pos_col);
+                if ( cells[t].alive && row == i && col == j ) {
+                    counter ++;
+                }
+            }
+            if ( counter > 9 ) printf("(M)" );
+            else if ( counter > 0 ) printf("(%1d)", counter );
+            else printf(" %c ", symbol );
+        }
 		printf("|\n");
 	}
 	printf("+");
-	for (j = 0; j < columns; j++)
-		printf("---");
+	for( j=0; j<columns; j++ ) printf("---");
 	printf("+\n");
-	printf("Num_cells_alive: %04d\nHistory( Cells: %04d, Dead: %04d, Max.alive: %04d, Max.new: %04d, Max.dead: %04d, Max.age: %04d, Max.food: %6f )\n\n",
-		   num_cells_alive,
-		   sim_stat.history_total_cells,
-		   sim_stat.history_dead_cells,
-		   sim_stat.history_max_alive_cells,
-		   sim_stat.history_max_new_cells,
-		   sim_stat.history_max_dead_cells,
-		   sim_stat.history_max_age,
-		   sim_stat.history_max_food);
+	printf("Num_cells_alive: %04d\nHistory( Cells: %04d, Dead: %04d, Max.alive: %04d, Max.new: %04d, Max.dead: %04d, Max.age: %04d, Max.food: %6f )\n\n", 
+		num_cells_alive, 
+		sim_stat.history_total_cells, 
+		sim_stat.history_dead_cells, 
+		sim_stat.history_max_alive_cells, 
+		sim_stat.history_max_new_cells, 
+		sim_stat.history_max_dead_cells, 
+		sim_stat.history_max_age,
+		sim_stat.history_max_food
+	);
 }
 #endif
 
@@ -878,7 +866,6 @@ int main(int argc, char *argv[])
 			if (cells[i].age > 30 && cells[i].storage > 20)
 			{
 				// Split: Create new cell
-				sim_stat.history_total_cells++;	// TODO: Reduce.
 				step_new_cells++;
 
 				// New cell is a copy of parent cell
@@ -971,6 +958,7 @@ int main(int argc, char *argv[])
 		if (current_max_food > sim_stat.history_max_food)
 			sim_stat.history_max_food = current_max_food;
 		// Statistics: Max new cells per step
+		sim_stat.history_total_cells += step_new_cells_root;
 		if (step_new_cells_root > sim_stat.history_max_new_cells)
 			sim_stat.history_max_new_cells = step_new_cells_root;
 		// Statistics: Accumulated dead and Max dead cells per step
@@ -982,8 +970,8 @@ int main(int argc, char *argv[])
 			sim_stat.history_max_alive_cells = total_cells;
 		update_time(time4_9);
 
-		//for (i = 0; i < num_cells && iter >= 19; i++)
-		//	printf("Iter %02d, Celula en %d para %d, total_c storage %f.\n", iter, arrayPos(cells[i]), rank, total_cells, cells[i].storage);
+		//for (i = 0; i < num_cells && iter >= 30; i++)
+		//	printf("Iter %02d, Celula en %d para %d storage %f\n", iter, arrayPos(cells[i]), rank, cells[i].storage);
 
 
 #ifdef DEBUG
