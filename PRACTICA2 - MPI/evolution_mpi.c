@@ -627,7 +627,7 @@ int main(int argc, char *argv[])
 			int row = (int)(rows * rand4_1[3 * i]);
 			int col = (int)(columns * rand4_1[3 * i + 1]);
 			if (mine(row, col))
-			{ //Funciona sólo para divisiones enteras
+			{
 				float food = (float)(food_level * rand4_1[3 * i + 2]);
 				accessMatSec(culture, row, col) += food;
 			}
@@ -792,6 +792,7 @@ int main(int argc, char *argv[])
 				if (free_position != i)
 				{
 					cells[free_position] = cells[i];
+					food_to_share[free_position] = food_to_share[i];
 				}
 				free_position++;
 			}
@@ -855,6 +856,7 @@ int main(int argc, char *argv[])
 		free(mailbox);
 		update_time(time4_X);
 
+
 		/* 4.4. Cell actions */
 		update_time(time4_4);
 		int step_new_cells = 0;
@@ -871,7 +873,7 @@ int main(int argc, char *argv[])
 
 			float my_food = food / count;
 			cells[i].storage += my_food;
-
+		
 			/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
 			if (cells[i].age > 30 && cells[i].storage > 20)
 			{
@@ -907,6 +909,7 @@ int main(int argc, char *argv[])
 		free_position = num_cells_alive;
 		num_cells_alive += step_new_cells;
 		update_time(time4_4);
+
 
 		/* 4.5. Clean ancillary data structures */
 		update_time(time4_5);
@@ -978,6 +981,10 @@ int main(int argc, char *argv[])
 		if (total_cells > sim_stat.history_max_alive_cells)
 			sim_stat.history_max_alive_cells = total_cells;
 		update_time(time4_9);
+
+		//for (i = 0; i < num_cells && iter >= 19; i++)
+		//	printf("Iter %02d, Celula en %d para %d, total_c storage %f.\n", iter, arrayPos(cells[i]), rank, total_cells, cells[i].storage);
+
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
