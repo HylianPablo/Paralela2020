@@ -533,7 +533,7 @@ int main(int argc, char *argv[])
 			free_position++;
 		}
 	}
-	cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells));
+	cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells);
 	update_time(time3_2);
 
 	// Space for the list of new cells (maximum number of new cells is num_cells)
@@ -720,27 +720,9 @@ int main(int argc, char *argv[])
 				int cell_section = section(cells[i]);
 				cells_moved_to[cell_section]++;
 				cell_destiny[i] = cell_section;
-				num_cells_alive--; //quizas tambien num_cells, pero reallocs dependencies 
 			}
 		} // End cell movements
 		update_time(time4_3);
-
-		/* 4.6. Clean dead cells from the original list */
-		update_time(time4_6);
-		// 4.6.1. Move alive cells to the left to substitute dead cells
-		free_position = 0;
-		for (i = 0; i < num_cells; i++)
-		{
-			if (cells[i].alive)
-			{
-				if (free_position != i)
-				{
-					cells[free_position] = cells[i];
-				}
-				free_position++;
-			}
-		}
-		update_time(time4_6);
 
 		// Cell delivery
 		update_time(timeDelivery);
@@ -771,18 +753,38 @@ int main(int argc, char *argv[])
 		}
 
 		// Fill cells to send matrix:
+		int tail_offset = 1;
 		for (i = 0; i < num_cells; i++)
 		{
-			if (!mine(cells[i].pos_row, cells[i].pos_col))
+			if (cells[i].alive && !mine(cells[i].pos_row, cells[i].pos_col))
 			{
 				cells_to_send[cell_destiny[i]][index[cell_destiny[i]]++] = cells[i];
+				cells[i].alive = false;
 			}
 		}
 		free(cell_destiny);
 		free(index);
 
-		int cellsReceived = 0;
 
+		/* 4.6. Clean dead cells from the original list */
+		update_time(time4_6);
+		// 4.6.1. Move alive cells to the left to substitute dead cells
+		free_position = 0;
+		for (i = 0; i < num_cells; i++)
+		{
+			if (cells[i].alive)
+			{
+				if (free_position != i)
+				{
+					cells[free_position] = cells[i];
+				}
+				free_position++;
+			}
+		}
+		num_cells_alive = free_position;
+		update_time(time4_6);
+
+		int cells_received = 0;
 		// Send/receive cells moved:
 		for (i = 0; i < nprocs; i++)
 		{
@@ -801,25 +803,29 @@ int main(int argc, char *argv[])
 			}
 			else if (cells_moved_from[i] > 0)
 			{
-				MPI_Recv(new_cells, cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
-				new_cells += cells_moved_from[i] * sizeof(Cell);
-				cellsReceived = cells_moved_from[i];
+				MPI_Recv(&new_cells[cells_received], cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
+				cells_received += cells_moved_from[i];
 			}
 		}
-
 		free(cells_moved_from);
-		if (cellsReceived > 0)
+
+		/* 4.7. Join cell lists: Old and new cells list */
+		if (cells_received > 0)
 		{
-			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells);
-			// WARNING: does cells have the correct size here? [Ref: 4.5.X]
-			for (j = 0; j < cellsReceived; j++)
+			num_cells_alive  += cells_received;
+			if (num_cells_alive > num_cells)
 			{
-				cells[num_cells + j] = new_cells[j];
-				accessMatSec(culture_cells, new_cells[j].pos_row, new_cells[j].pos_col) += 1;
-				food_to_share[num_cells + j] = accessMatSec(culture, cells[j].pos_row, cells[j].pos_col);
+				cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
+				food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
+				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
-			num_cells_alive += cellsReceived;
-			new_cells -= cellsReceived * sizeof(Cell);
+
+			for (j = 0; j < cells_received; j++)
+			{
+				cells[free_position + j] = new_cells[j];
+				accessMatSec(culture_cells, new_cells[j].pos_row, new_cells[j].pos_col) += 1;
+				food_to_share[free_position + j] = accessMatSec(culture, cells[j].pos_row, cells[j].pos_col);
+			}
 		}
 		update_time(timeDelivery);
 
@@ -828,7 +834,7 @@ int main(int argc, char *argv[])
 		/* 4.4. Cell actions */
 		update_time(time4_4);
 		int step_new_cells = 0;
-		for (i = 0; i < free_position; i++) // Antes se ejecutaba hasta num_cells
+		for (i = 0; i < num_cells_alive; i++) // Antes se ejecutaba hasta num_cells
 		{
 			//if (cells[i].alive)
 			//{
@@ -846,8 +852,7 @@ int main(int argc, char *argv[])
 			if (cells[i].age > 30 && cells[i].storage > 20)
 			{
 				// Split: Create new cell
-				//num_cells_alive++;
-				sim_stat.history_total_cells++;
+				sim_stat.history_total_cells++;	// TODO: Reduce.
 				step_new_cells++;
 
 				// New cell is a copy of parent cell
@@ -875,18 +880,11 @@ int main(int argc, char *argv[])
 			//}
 			//}
 		} // End cell actions
-		num_cells_alive = num_cells_alive - step_dead_cells + step_new_cells;
+		num_cells_alive += step_new_cells;
 		update_time(time4_4);
 
 		/* 4.5. Clean ancillary data structures */
 		update_time(time4_5);
-		/* 4.5.X Allocate more space for the data structures, if needed. */
-		if (num_cells_alive > num_cells)
-		{
-			new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
-			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
-			cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
-		}
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i = 0; i < free_position; i++)
 			if (mine(cells[i].pos_row, cells[i].pos_col)) //antes comprobaba tambien cells.alive
@@ -898,6 +896,16 @@ int main(int argc, char *argv[])
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		update_time(time4_7);
+		if (step_new_cells > 0)
+		{
+			cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
+			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
+			new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
+
+			for (j=0; j<step_new_cells; j++)
+				cells[num_cells + j] = new_cells[j];
+			num_cells += step_new_cells;
+		}
 		update_time(time4_7);
 
 		/* 4.8. Decrease non - harvested food */
@@ -939,8 +947,8 @@ int main(int argc, char *argv[])
 		if (step_dead_cells_root > sim_stat.history_max_dead_cells)
 			sim_stat.history_max_dead_cells = step_dead_cells_root;
 		// Statistics: Max alive cells per step
-		if (num_cells_alive > sim_stat.history_max_alive_cells)
-			sim_stat.history_max_alive_cells = num_cells_alive;
+		if (total_cells > sim_stat.history_max_alive_cells)
+			sim_stat.history_max_alive_cells = total_cells;
 		update_time(time4_9);
 
 #ifdef DEBUG
@@ -949,6 +957,8 @@ int main(int argc, char *argv[])
 			print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
 #endif // DEBUG
 	}
+
+	num_cells_alive = total_cells;
 
 	// Let's not be bad...
 	free(new_cells);
@@ -963,7 +973,7 @@ int main(int argc, char *argv[])
 		printf("\t4.1 - %lf\n", time4_1);
 		printf("\t4.3 - %lf\n", time4_3);
 		printf("\t4.6 - %lf\n", time4_6);
-		printf("\tCell delivery - %lf\n", timeDelivery);
+		printf("\tCell delivery - %lf\n", timeDelivery - time4_6);
 		printf("\t4.4 - %lf\n", time4_4);
 		printf("\t4.5 - %lf\n", time4_5);
 		printf("\t4.7 - %lf\n", time4_7);
@@ -972,7 +982,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	/*
+/*
  *
  * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
  *
