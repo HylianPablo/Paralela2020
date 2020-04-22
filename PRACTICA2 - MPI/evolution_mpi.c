@@ -402,9 +402,10 @@ int main(int argc, char *argv[])
 	double time3_2 = 0.0;
 	double time4_1 = 0.0;
 	double time4_3 = 0.0;
+	double time4_6 = 0.0;
+	double timeDelivery = 0.0;
 	double time4_4 = 0.0;
 	double time4_5 = 0.0;
-	double time4_6 = 0.0;
 	double time4_7 = 0.0;
 	double time4_8 = 0.0;
 	double time4_9 = 0.0;
@@ -560,22 +561,21 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
 	/* Show initial cells data */
-	if (rank == 0)
+	if(rank==0)
 	{
-		printf("Initial cells data: %d\n", num_cells);
-		for (i = 0; i < num_cells; i++)
-		{
-			printf("\tCell %d, Pos(%f, %f), Mov(%f, %f), Choose_mov(%f, %f, %f), Storage: %f, Age: %d\n",
-				   i,
-				   cells[i].pos_row,
-				   cells[i].pos_col,
-				   cells[i].mov_row,
-				   cells[i].mov_col,
-				   cells[i].choose_mov[0],
-				   cells[i].choose_mov[1],
-				   cells[i].choose_mov[2],
-				   cells[i].storage,
-				   cells[i].age);
+		printf("Initial cells data: %d\n", num_cells );
+		for( i=0; i<num_cells; i++ ) {
+			printf("\tCell %d, Pos(%f,%f), Mov(%f,%f), Choose_mov(%f,%f,%f), Storage: %f, Age: %d\n",
+					i, 
+					cells[i].pos_row, 
+					cells[i].pos_col, 
+					cells[i].mov_row, 
+					cells[i].mov_col, 
+					cells[i].choose_mov[0], 
+					cells[i].choose_mov[1], 
+					cells[i].choose_mov[2], 
+					cells[i].storage,
+					cells[i].age );
 		}
 	}
 #endif // DEBUG
@@ -594,7 +594,7 @@ int main(int argc, char *argv[])
 
 	double rand4_1[3 * max_sources];
 
-	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)  //Reduce al final de iteracion
+	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
 	{
 		/* 4.1. Spreading new food */
 		update_time(time4_1);
@@ -642,9 +642,7 @@ int main(int argc, char *argv[])
 		/* 4.3. Cell movements */
 		update_time(time4_3);
 		int step_dead_cells = 0;
-		int step_dead_cells_root;
-		int max_age = 0;  //TODO: Mover variables root al 4.9 
-		int max_age_root;
+		int max_age = 0;
 		int *cell_destiny = malloc(num_cells * sizeof(int));
 		int *cells_moved_to = malloc(nprocs * sizeof(int));
 		for (i = 0; i < nprocs; i++)
@@ -720,12 +718,12 @@ int main(int argc, char *argv[])
 			else
 			{
 				int cell_section = section(cells[i]);
-				printf("Fila %f, columna %f, seccion %d, posicion %d\n", cells[i].pos_row, cells[i].pos_col, cell_section, arrayPos(cells[i]));
 				cells_moved_to[cell_section]++;
 				cell_destiny[i] = cell_section;
 				num_cells_alive--; //quizas tambien num_cells, pero reallocs dependencies 
 			}
 		} // End cell movements
+		update_time(time4_3);
 
 		/* 4.6. Clean dead cells from the original list */
 		update_time(time4_6);
@@ -744,6 +742,8 @@ int main(int argc, char *argv[])
 		}
 		update_time(time4_6);
 
+		// Cell delivery
+		update_time(timeDelivery);
 		// Create cells to send matrix:
 		Cell **cells_to_send = (Cell **)malloc(nprocs * sizeof(Cell *));
 
@@ -769,18 +769,13 @@ int main(int argc, char *argv[])
 				MPI_Recv(&cells_moved_from[i], 1, MPI_INT, i, tag, MPI_COMM_WORLD, &stat);
 			}
 		}
-		for (i = 0; i < nprocs; i++)
-		{
-			printf("Proceso %d envia %d a %d\n", rank, cells_moved_to[i], i);
-			printf("Proceso %d recibe %d de %d\n", rank, cells_moved_from[i], i);
-		}
+
 		// Fill cells to send matrix:
 		for (i = 0; i < num_cells; i++)
 		{
 			if (!mine(cells[i].pos_row, cells[i].pos_col))
 			{
 				cells_to_send[cell_destiny[i]][index[cell_destiny[i]]++] = cells[i];
-				// Menuda santa locura.
 			}
 		}
 		free(cell_destiny);
@@ -797,9 +792,7 @@ int main(int argc, char *argv[])
 				{
 					if (cells_moved_to[j] > 0)
 					{
-						//printf("Entra el proceso %d con valor %d e iteracion %d\n",rank,cells_moved_to[j],j);
 						MPI_Send(&cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
-						//printf("Sale el proceso %d\n",rank);
 						free(cells_to_send[j]);
 					}
 				}
@@ -808,17 +801,12 @@ int main(int argc, char *argv[])
 			}
 			else if (cells_moved_from[i] > 0)
 			{
-				//printf("Entra el proceso %d\n",rank);
 				MPI_Recv(new_cells, cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
-				//printf("Sale el proceso %d\n",rank);
 				new_cells += cells_moved_from[i] * sizeof(Cell);
 				cellsReceived = cells_moved_from[i];
-				// TODO: juntar new_cells en cells.
-				// Ahora mismo esto está mal: se está sobreescribiendo new_cells todo el rato.
-				// TODO: AccessMat para new_cells.
 			}
 		}
-		printf("Hasta aquí no hay deadlock, iteración %d y rank %d\n", iter, rank);
+
 		free(cells_moved_from);
 		if (cellsReceived > 0)
 		{
@@ -833,16 +821,13 @@ int main(int argc, char *argv[])
 			num_cells_alive += cellsReceived;
 			new_cells -= cellsReceived * sizeof(Cell);
 		}
-		// TODO: num_cells_alive MUY A FONDO.
-
-		update_time(time4_3);
+		update_time(timeDelivery);
 
 		
 
 		/* 4.4. Cell actions */
 		update_time(time4_4);
 		int step_new_cells = 0;
-		int step_new_cells_root = 0;
 		for (i = 0; i < free_position; i++) // Antes se ejecutaba hasta num_cells
 		{
 			//if (cells[i].alive)
@@ -925,17 +910,18 @@ int main(int argc, char *argv[])
 			if (culture[i] > current_max_food)
 				current_max_food = culture[i];
 		}
-
-		float current_max_food_root;
 		update_time(time4_8);
 
 		/* 4.9. Statistics */
 		update_time(time4_9);
-		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		// Reductions:
+		int max_age_root, step_new_cells_root, step_dead_cells_root;
+		float current_max_food_root;
 		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, MPI_COMM_WORLD);
 		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Allreduce(&num_cells_alive,&total_cells,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Allreduce(&num_cells_alive, &total_cells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		if (rank == 0)
 		{
 			sim_stat.history_max_age = max_age_root;
@@ -947,7 +933,6 @@ int main(int argc, char *argv[])
 			sim_stat.history_max_food = current_max_food;
 		// Statistics: Max new cells per step
 		if (step_new_cells_root > sim_stat.history_max_new_cells)
-
 			sim_stat.history_max_new_cells = step_new_cells_root;
 		// Statistics: Accumulated dead and Max dead cells per step
 		sim_stat.history_dead_cells += step_dead_cells_root;
@@ -977,9 +962,10 @@ int main(int argc, char *argv[])
 		printf("\t3.2 - %lf\n", time3_2);
 		printf("\t4.1 - %lf\n", time4_1);
 		printf("\t4.3 - %lf\n", time4_3);
+		printf("\t4.6 - %lf\n", time4_6);
+		printf("\tCell delivery - %lf\n", timeDelivery);
 		printf("\t4.4 - %lf\n", time4_4);
 		printf("\t4.5 - %lf\n", time4_5);
-		printf("\t4.6 - %lf\n", time4_6);
 		printf("\t4.7 - %lf\n", time4_7);
 		printf("\t4.8 - %lf\n", time4_8);
 		printf("\t4.9 - %lf\n", time4_9);
