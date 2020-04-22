@@ -130,33 +130,33 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 		printf("|");
 		for (j = 0; j < columns; j++)
 		{
-            char symbol;
-            // if (accessMat(culture, i, j) >= 20)
-            //     symbol = '+';
-            // else if (accessMat(culture, i, j) >= 10)
-            //     symbol = '*';
-            // else if (accessMat(culture, i, j) >= 5)
-            //     symbol = '.';
-            // else
-            //     symbol = ' ';
+			char symbol;
+			// if (accessMat(culture, i, j) >= 20)
+			//     symbol = '+';
+			// else if (accessMat(culture, i, j) >= 10)
+			//     symbol = '*';
+			// else if (accessMat(culture, i, j) >= 5)
+			//     symbol = '.';
+			// else
+			//     symbol = ' ';
 
-            int t;
-            double counter = 0;
-            for (t = 0; t < num_cells; t++)
-            {
-                int row = (int)(cells[t].pos_row);
-                int col = (int)(cells[t].pos_col);
-                if (cells[t].alive && row == i && col == j)
-                {
-                    counter += cells[t].storage;
-                }
-            }
-            if (counter > 0)
-                printf("(%05.2f)", counter);
-            else
-                //printf(" %c ", symbol);
-                printf(" %05.2f ", (accessMat(culture, i, j)));
-        }
+			int t;
+			double counter = 0;
+			for (t = 0; t < num_cells; t++)
+			{
+				int row = (int)(cells[t].pos_row);
+				int col = (int)(cells[t].pos_col);
+				if (cells[t].alive && row == i && col == j)
+				{
+					counter += cells[t].storage;
+				}
+			}
+			if (counter > 0)
+				printf("(%05.2f)", counter);
+			else
+				//printf(" %c ", symbol);
+				printf(" %05.2f ", (accessMat(culture, i, j)));
+		}
 		printf("|\n");
 	}
 	printf("+");
@@ -368,7 +368,7 @@ int main(int argc, char *argv[])
  * Macro function to get the exact offset in an array for a cell.
  *
  */
-#define arrayPos(cell) ((int)cell.pos_row*columns + (int)cell.pos_col)
+#define arrayPos(cell) ((int)cell.pos_row * columns + (int)cell.pos_col)
 
 /*
  * Macro function to check if a point in a matrix belongs to this process' section.
@@ -380,8 +380,8 @@ int main(int argc, char *argv[])
  * Macro functions to get the matrix section a cell belongs to.
  *
  */
-#define potentialSection(cell) (arrayPos(cell)/fraction)
-#define section(cell) (potentialSection(cell) - ((potentialSection(cell)*fraction - arrayPos(cell) < min(remainder, potentialSection(cell))) && potentialSection(cell) != 0))
+#define potentialSection(cell) (arrayPos(cell) / fraction)
+#define section(cell) (potentialSection(cell) - ((potentialSection(cell) * fraction - arrayPos(cell) < min(remainder, potentialSection(cell))) && potentialSection(cell) != 0))
 
 /* 
  * Macro function measure execution times for each section, if not in a leaderboard
@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
 			free_position++;
 		}
 	}
-	cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells));	
+	cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells));
 	update_time(time3_2);
 
 	// Statistics: Initialize total number of cells, and max. alive
@@ -644,9 +644,9 @@ int main(int argc, char *argv[])
 		int max_age_root;
 		int *cell_destiny = malloc(num_cells * sizeof(int));
 		int *cells_moved_to = malloc(nprocs * sizeof(int));
-		for(i = 0; i < nprocs; i++)
+		for (i = 0; i < nprocs; i++)
 		{
-			cells_moved_to[i]=0;
+			cells_moved_to[i] = 0;
 		}
 
 		for (i = 0; i < num_cells; i++)
@@ -707,34 +707,36 @@ int main(int argc, char *argv[])
 					cells[i].pos_col += columns;
 				if (cells[i].pos_col >= columns)
 					cells[i].pos_col -= columns;
-				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				if (mine(cells[i].pos_row, cells[i].pos_col))
-				{
-					accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
-					food_to_share[i]=accessMatSec(culture,cells[i].pos_row,cells[i].pos_col);
-				}
-				else
-				{
-					int cell_section = section(cells[i]);
-					cells_moved_to[cell_section]++;
-					cell_destiny[i] = cell_section;
-				}
+			}
+			/* 4.3.4. Annotate that there is one more cell in this culture position */
+			if (mine(cells[i].pos_row, cells[i].pos_col))
+			{
+				accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+				food_to_share[i] = accessMatSec(culture, cells[i].pos_row, cells[i].pos_col);
+			}
+			else
+			{
+				int cell_section = section(cells[i]);
+				printf("Fila %f, columna %f, seccion %d, posicion %d\n",cells[i].pos_row,cells[i].pos_col,cell_section,arrayPos(cells[i]));
+				cells_moved_to[cell_section]++;
+				cell_destiny[i] = cell_section;
 			}
 		} // End cell movements
 
 		// Create cells to send matrix:
 		Cell **cells_to_send = (Cell **)malloc(nprocs * sizeof(Cell *));
 
+
 		// Send/receive number of cells moved:
 		int *cells_moved_from = (int *)malloc(nprocs * sizeof(int));
 		int *index = (int *)malloc(nprocs * sizeof(int));
-		for(i = 0; i < nprocs; i++)
+		for (i = 0; i < nprocs; i++)
 		{
 			if (rank == i)
 			{
 				for (j = 0; j < nprocs; j++)
 				{
-					if (rank != j) 
+					if (rank != j)
 					{
 						MPI_Send(&cells_moved_to[j], 1, MPI_INT, j, tag, MPI_COMM_WORLD);
 						cells_to_send[j] = (Cell *)malloc(cells_moved_to[j] * sizeof(Cell));
@@ -747,7 +749,10 @@ int main(int argc, char *argv[])
 				MPI_Recv(&cells_moved_from[i], 1, MPI_INT, i, tag, MPI_COMM_WORLD, &stat);
 			}
 		}
-
+		for(i=0;i<nprocs;i++){
+				printf("Proceso %d envia %d a %d\n",rank,cells_moved_to[i],i);
+				printf("Proceso %d recibe %d de %d\n",rank,cells_moved_from[i],i);
+		}
 		// Fill cells to send matrix:
 		for (i = 0; i < num_cells; i++)
 		{
@@ -760,7 +765,7 @@ int main(int argc, char *argv[])
 		free(cell_destiny);
 		free(index);
 
-		int cellsReceived=0;
+		int cellsReceived = 0;
 
 		// Send/receive cells moved:
 		for (i = 0; i < nprocs; i++)
@@ -771,7 +776,9 @@ int main(int argc, char *argv[])
 				{
 					if (cells_moved_to[j] > 0)
 					{
+						//printf("Entra el proceso %d con valor %d e iteracion %d\n",rank,cells_moved_to[j],j);
 						MPI_Send(&cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
+						//printf("Sale el proceso %d\n",rank);
 						free(cells_to_send[j]);
 					}
 				}
@@ -780,26 +787,30 @@ int main(int argc, char *argv[])
 			}
 			else if (cells_moved_from[i] > 0)
 			{
+				//printf("Entra el proceso %d\n",rank);
 				MPI_Recv(new_cells, cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
-				new_cells+=cells_moved_from[i]*sizeof(Cell);
-				cellsReceived=cells_moved_from[i];
+				//printf("Sale el proceso %d\n",rank);
+				new_cells += cells_moved_from[i] * sizeof(Cell);
+				cellsReceived = cells_moved_from[i];
 				// TODO: juntar new_cells en cells.
 				// Ahora mismo esto está mal: se está sobreescribiendo new_cells todo el rato.
 				// TODO: AccessMat para new_cells.
 			}
 		}
+		printf("Hasta aquí no hay deadlock, iteración %d y rank %d\n",iter,rank);
 		free(cells_moved_from);
 		if (cellsReceived > 0)
 		{
-			food_to_share = (float *) realloc(food_to_share,sizeof(float)*num_cells);
+			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells);
 			// WARNING: does cells have the correct size here? [Ref: 4.5.X]
-			for (j = 0; j < cellsReceived; j++){
+			for (j = 0; j < cellsReceived; j++)
+			{
 				cells[num_cells + j] = new_cells[j];
-				accessMatSec(culture_cells,new_cells[j].pos_row,new_cells[j].pos_col)+=1;
-				food_to_share[num_cells+j]=accessMatSec(culture,cells[j].pos_row,cells[j].pos_col);
+				accessMatSec(culture_cells, new_cells[j].pos_row, new_cells[j].pos_col) += 1;
+				food_to_share[num_cells + j] = accessMatSec(culture, cells[j].pos_row, cells[j].pos_col);
 			}
 			num_cells += cellsReceived;
-			new_cells-=cellsReceived * sizeof(Cell);
+			new_cells -= cellsReceived * sizeof(Cell);
 		}
 		// TODO: num_cells_alive MUY A FONDO.
 
@@ -810,7 +821,7 @@ int main(int argc, char *argv[])
 			sim_stat.history_max_age = max_age_root;
 		}
 		update_time(time4_3);
-
+		
 		/* 4.6. Clean dead cells from the original list */
 		update_time(time4_6);
 		// 4.6.1. Move alive cells to the left to substitute dead cells
