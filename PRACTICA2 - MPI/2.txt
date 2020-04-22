@@ -1,0 +1,155 @@
+Soy el rank 0, empiezo en 0 y mi tamaño es 580
+El tamaño total es 1160
+Soy el rank 1, empiezo en 580 y mi tamaño es 580
+Iter 00 tiene celula en 61 y storage 17.946609 para el proceso 0
+Iter 00 tiene celula en 62 y storage 12.375165 para el proceso 0
+Iter 00 tiene celula en 528 y storage 18.899069 para el proceso 0
+Iter 00 tiene celula en 396 y storage 9.262994 para el proceso 0
+Iter 00 tiene celula en 893 y storage 10.898569 para el proceso 1
+Iter 00 tiene celula en 1035 y storage 13.294463 para el proceso 1
+Iter 00 tiene celula en 716 y storage 9.403634 para el proceso 1
+Iter 00 tiene celula en 765 y storage 15.474003 para el proceso 1
+Iter 01 tiene celula en 22 y storage 16.946609 para el proceso 0
+Iter 01 tiene celula en 101 y storage 11.375165 para el proceso 0
+Iter 01 tiene celula en 529 y storage 17.899069 para el proceso 0
+Iter 01 tiene celula en 356 y storage 8.262994 para el proceso 0
+Iter 01 tiene celula en 893 y storage 9.898569 para el proceso 1
+Iter 01 tiene celula en 1075 y storage 12.294463 para el proceso 1
+Iter 01 tiene celula en 715 y storage 8.403634 para el proceso 1
+Iter 01 tiene celula en 766 y storage 14.474003 para el proceso 1
+Iter 02 tiene celula en 142 y storage 10.375165 para el proceso 0
+Iter 02 tiene celula en 489 y storage 16.899069 para el proceso 0
+Iter 02 tiene celula en 355 y storage 7.262994 para el proceso 0
+Iter 02 tiene celula en 852 y storage 8.898569 para el proceso 1
+Iter 02 tiene celula en 1034 y storage 11.294463 para el proceso 1
+Iter 02 tiene celula en 755 y storage 7.403634 para el proceso 1
+Iter 02 tiene celula en 726 y storage 13.474003 para el proceso 1
+Iter 02 tiene celula en 1142 y storage 15.946609 para el proceso 1
+Iter 03 tiene celula en 141 y storage 9.375165 para el proceso 0
+Iter 03 tiene celula en 490 y storage 15.899069 para el proceso 0
+Iter 03 tiene celula en 395 y storage 6.262994 para el proceso 0
+Iter 03 tiene celula en 891 y storage 7.898569 para el proceso 1
+Iter 03 tiene celula en 1033 y storage 10.294463 para el proceso 1
+Iter 03 tiene celula en 794 y storage 6.403634 para el proceso 1
+Iter 03 tiene celula en 725 y storage 12.474003 para el proceso 1
+Iter 04 tiene celula en 182 y storage 8.375165 para el proceso 0
+Iter 04 tiene celula en 450 y storage 14.899069 para el proceso 0
+Iter 04 tiene celula en 394 y storage 5.262994 para el proceso 0
+Iter 05 tiene celula en 222 y storage 7.375165 para el proceso 0
+Iter 05 tiene celula en 451 y storage 13.899069 para el proceso 0
+Iter 05 tiene celula en 354 y storage 4.262994 para el proceso 0
+Iter 06 tiene celula en 221 y storage 6.375165 para el proceso 0
+Iter 06 tiene celula en 491 y storage 12.899069 para el proceso 0
+Iter 06 tiene celula en 314 y storage 3.262994 para el proceso 0
+Iter 07 tiene celula en 220 y storage 5.375165 para el proceso 0
+Iter 07 tiene celula en 490 y storage 12.134312 para el proceso 0
+Iter 07 tiene celula en 274 y storage 2.262994 para el proceso 0
+Iter 08 tiene celula en 181 y storage 4.375165 para el proceso 0
+Iter 08 tiene celula en 489 y storage 11.134312 para el proceso 0
+Iter 08 tiene celula en 273 y storage 1.262994 para el proceso 0
+Iter 09 tiene celula en 222 y storage 3.375165 para el proceso 0
+Iter 09 tiene celula en 488 y storage 10.134312 para el proceso 0
+Iter 09 tiene celula en 272 y storage 0.262994 para el proceso 0
+Iter 10 tiene celula en 222 y storage 2.375165 para el proceso 0
+Iter 10 tiene celula en 448 y storage 21.044239 para el proceso 0
+Iter 10 tiene celula en 272 y storage 0.062994 para el proceso 0
+Iter 11 tiene celula en 263 y storage 8.931528 para el proceso 0
+Iter 11 tiene celula en 408 y storage 20.044239 para el proceso 0
+Iter 12 tiene celula en 224 y storage 7.931528 para el proceso 0
+Iter 12 tiene celula en 368 y storage 19.044239 para el proceso 0
+Iter 13 tiene celula en 264 y storage 6.931528 para el proceso 0
+Iter 13 tiene celula en 369 y storage 18.044239 para el proceso 0
+Iter 14 tiene celula en 225 y storage 5.931528 para el proceso 0
+Iter 14 tiene celula en 370 y storage 17.044239 para el proceso 0
+Iter 15 tiene celula en 266 y storage 16.035978 para el proceso 0
+Iter 15 tiene celula en 410 y storage 16.044239 para el proceso 0
+Iter 16 tiene celula en 267 y storage 15.035978 para el proceso 0
+Iter 16 tiene celula en 411 y storage 15.044239 para el proceso 0
+Iter 17 tiene celula en 267 y storage 14.035978 para el proceso 0
+Iter 17 tiene celula en 412 y storage 14.044239 para el proceso 0
+Iter 18 tiene celula en 228 y storage 13.035978 para el proceso 0
+Iter 18 tiene celula en 452 y storage 13.044239 para el proceso 0
+Iter 19 tiene celula en 189 y storage 12.035978 para el proceso 0
+Iter 19 tiene celula en 451 y storage 12.044239 para el proceso 0
+Iter 20 tiene celula en 229 y storage 11.035978 para el proceso 0
+Iter 20 tiene celula en 411 y storage 11.044239 para el proceso 0
+Iter 20 tiene celula en 570 y storage 5.601972 para el proceso 0
+Iter 21 tiene celula en 190 y storage 18.094206 para el proceso 0
+Iter 21 tiene celula en 410 y storage 10.044239 para el proceso 0
+Iter 22 tiene celula en 231 y storage 17.094206 para el proceso 0
+Iter 22 tiene celula en 370 y storage 9.044239 para el proceso 0
+Iter 23 tiene celula en 191 y storage 16.094206 para el proceso 0
+Iter 23 tiene celula en 369 y storage 8.044239 para el proceso 0
+Iter 24 tiene celula en 232 y storage 15.094206 para el proceso 0
+Iter 24 tiene celula en 368 y storage 7.044239 para el proceso 0
+Iter 25 tiene celula en 193 y storage 14.094206 para el proceso 0
+Iter 25 tiene celula en 408 y storage 6.044239 para el proceso 0
+Iter 26 tiene celula en 153 y storage 14.858685 para el proceso 0
+Iter 26 tiene celula en 407 y storage 5.044239 para el proceso 0
+Iter 27 tiene celula en 153 y storage 13.858685 para el proceso 0
+Iter 27 tiene celula en 447 y storage 4.044239 para el proceso 0
+Iter 28 tiene celula en 152 y storage 12.858685 para el proceso 0
+Iter 28 tiene celula en 446 y storage 7.939442 para el proceso 0
+Iter 29 tiene celula en 151 y storage 11.858685 para el proceso 0
+Iter 29 tiene celula en 445 y storage 17.062263 para el proceso 0
+Execution times for each subsection:
+	3.1 - 0.000002
+	3.2 - 0.000024
+	4.1 - 0.000064
+	4.3 - 0.000036
+	4.6 - 0.000031
+	Cell delivery - 0.000137
+	4.4 - 0.000037
+	4.5 - 0.000037
+	4.7 - 0.000036
+	4.8 - 0.000072
+	4.9 - 0.000280
+
+Time: 0.001304
+Result: 30, 2, 8, 4, 8, 0, 2, 46, 27.653061
+Iter 04 tiene celula en 890 y storage 6.898569 para el proceso 1
+Iter 04 tiene celula en 994 y storage 9.294463 para el proceso 1
+Iter 04 tiene celula en 793 y storage 5.403634 para el proceso 1
+Iter 04 tiene celula en 685 y storage 11.474003 para el proceso 1
+Iter 05 tiene celula en 850 y storage 5.898569 para el proceso 1
+Iter 05 tiene celula en 953 y storage 8.294463 para el proceso 1
+Iter 05 tiene celula en 834 y storage 4.403634 para el proceso 1
+Iter 05 tiene celula en 686 y storage 10.474003 para el proceso 1
+Iter 06 tiene celula en 889 y storage 4.898569 para el proceso 1
+Iter 06 tiene celula en 992 y storage 7.294463 para el proceso 1
+Iter 06 tiene celula en 873 y storage 3.403634 para el proceso 1
+Iter 06 tiene celula en 687 y storage 9.474003 para el proceso 1
+Iter 07 tiene celula en 890 y storage 3.898569 para el proceso 1
+Iter 07 tiene celula en 1033 y storage 6.294463 para el proceso 1
+Iter 07 tiene celula en 873 y storage 2.403634 para el proceso 1
+Iter 07 tiene celula en 688 y storage 8.474003 para el proceso 1
+Iter 08 tiene celula en 890 y storage 2.898569 para el proceso 1
+Iter 08 tiene celula en 1034 y storage 5.294463 para el proceso 1
+Iter 08 tiene celula en 912 y storage 1.403634 para el proceso 1
+Iter 08 tiene celula en 689 y storage 7.474003 para el proceso 1
+Iter 09 tiene celula en 891 y storage 1.898569 para el proceso 1
+Iter 09 tiene celula en 1075 y storage 4.294463 para el proceso 1
+Iter 09 tiene celula en 872 y storage 0.403634 para el proceso 1
+Iter 09 tiene celula en 729 y storage 6.474003 para el proceso 1
+Iter 10 tiene celula en 932 y storage 0.898569 para el proceso 1
+Iter 10 tiene celula en 1114 y storage 3.294463 para el proceso 1
+Iter 10 tiene celula en 872 y storage 0.203634 para el proceso 1
+Iter 10 tiene celula en 730 y storage 5.474003 para el proceso 1
+Iter 11 tiene celula en 932 y storage 0.698569 para el proceso 1
+Iter 11 tiene celula en 1115 y storage 2.294463 para el proceso 1
+Iter 11 tiene celula en 872 y storage 0.003634 para el proceso 1
+Iter 11 tiene celula en 770 y storage 4.474003 para el proceso 1
+Iter 12 tiene celula en 932 y storage 0.498569 para el proceso 1
+Iter 12 tiene celula en 1116 y storage 1.294463 para el proceso 1
+Iter 12 tiene celula en 810 y storage 3.474003 para el proceso 1
+Iter 13 tiene celula en 932 y storage 0.298569 para el proceso 1
+Iter 13 tiene celula en 1157 y storage 0.294463 para el proceso 1
+Iter 13 tiene celula en 811 y storage 12.601972 para el proceso 1
+Iter 14 tiene celula en 932 y storage 0.098569 para el proceso 1
+Iter 14 tiene celula en 1157 y storage 0.094463 para el proceso 1
+Iter 14 tiene celula en 771 y storage 11.601972 para el proceso 1
+Iter 15 tiene celula en 731 y storage 10.601972 para el proceso 1
+Iter 16 tiene celula en 691 y storage 9.601972 para el proceso 1
+Iter 17 tiene celula en 690 y storage 8.601972 para el proceso 1
+Iter 18 tiene celula en 650 y storage 7.601972 para el proceso 1
+Iter 19 tiene celula en 610 y storage 6.601972 para el proceso 1

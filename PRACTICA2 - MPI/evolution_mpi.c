@@ -403,12 +403,22 @@ int main(int argc, char *argv[])
 	double time4_1 = 0.0;
 	double time4_3 = 0.0;
 	double time4_6 = 0.0;
-	double timeDelivery = 0.0;
+	double time4_X = 0.0;
 	double time4_4 = 0.0;
 	double time4_5 = 0.0;
 	double time4_7 = 0.0;
 	double time4_8 = 0.0;
 	double time4_9 = 0.0;
+
+	double max_time4_1 = 0.0;
+	double max_time4_3 = 0.0;
+	double max_time4_6 = 0.0;
+	double max_time4_X = 0.0;
+	double max_time4_4 = 0.0;
+	double max_time4_5 = 0.0;
+	double max_time4_7 = 0.0;
+	double max_time4_8 = 0.0;
+	double max_time4_9 = 0.0;
 #endif
 
 	/* 
@@ -425,12 +435,6 @@ int main(int argc, char *argv[])
 	int max_ceil = min(rank, remainder);
 	int max_floor = max(rank - remainder, 0);
 	int my_begin = max_ceil * (fraction + 1) + max_floor * fraction;
-
-#ifndef CP_TABLON
-	printf("Soy el rank %d, empiezo en %d y mi tamaño es %d\n", rank, my_begin, my_size);
-	if (rank == 0)
-		printf("El tamaño total es %d\n", rows * columns);
-#endif
 
 	int total_cells = num_cells; //Reduccion de suma de num_cells
 
@@ -587,6 +591,7 @@ int main(int argc, char *argv[])
 	 */
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
+	int num_max_cells = num_cells;
 	int iter;
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
@@ -596,6 +601,17 @@ int main(int argc, char *argv[])
 
 	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
 	{
+#ifndef CP_TABLON
+		max_time4_1 = max(max_time4_1, time4_1);
+		max_time4_3 = max(max_time4_3, time4_3);
+		max_time4_6 = max(max_time4_6, time4_6);
+		max_time4_X = max(max_time4_X, time4_X - time4_6);
+		max_time4_4 = max(max_time4_4, time4_4);
+		max_time4_5 = max(max_time4_5, time4_5);
+		max_time4_7 = max(max_time4_7, time4_7);
+		max_time4_8 = max(max_time4_8, time4_8);
+		max_time4_9 = max(max_time4_9, time4_9);
+#endif
 		/* 4.1. Spreading new food */
 		update_time(time4_1);
 		// Across the whole culture
@@ -725,7 +741,7 @@ int main(int argc, char *argv[])
 		update_time(time4_3);
 
 		// Cell delivery
-		update_time(timeDelivery);
+		update_time(time4_X);
 		// Create cells to send matrix:
 		Cell **cells_to_send = (Cell **)malloc(nprocs * sizeof(Cell *));
 
@@ -758,7 +774,6 @@ int main(int argc, char *argv[])
 			if (cells[i].alive && !mine(cells[i].pos_row, cells[i].pos_col))
 			{
 				cells_to_send[cell_destiny[i]][index[cell_destiny[i]]++] = cells[i];
-				printf("Proceso %d iter %d envía célula en %d\nRow %f col %f mov_row %f mov_col %f choose_mov %f %f %f storage %f age %d random_seq %hu %hu %hu, alive %d\n", rank, iter, arrayPos(cells[i]), cells[i].pos_row, cells[i].pos_col, cells[i].mov_row, cells[i].mov_col, cells[i].choose_mov[0], cells[i].choose_mov[1], cells[i].choose_mov[2], cells[i].storage, cells[i].age, cells[i].random_seq[0], cells[i].random_seq[1], cells[i].random_seq[2], cells[i].alive);				
 				cells[i].alive = false;
 			}
 		}
@@ -785,6 +800,15 @@ int main(int argc, char *argv[])
 		update_time(time4_6);
 
 		int cells_received = 0;
+		int cells_to_receive = 0;
+		for (i = 0; i < nprocs; i++)
+		{
+			if (rank != i)
+			{
+				cells_to_receive += cells_moved_from[i];
+			}
+		}
+		Cell *mailbox = (Cell *)malloc(cells_to_receive * sizeof(Cell));
 		// Send/receive cells moved:
 		for (i = 0; i < nprocs; i++)
 		{
@@ -803,7 +827,7 @@ int main(int argc, char *argv[])
 			}
 			else if (cells_moved_from[i] > 0)
 			{
-				MPI_Recv(&new_cells[cells_received], cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
+				MPI_Recv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
 				cells_received += cells_moved_from[i];
 			}
 		}
@@ -813,24 +837,23 @@ int main(int argc, char *argv[])
 		if (cells_received > 0)
 		{
 			num_cells_alive  += cells_received;
-			if (num_cells_alive > num_cells)
+			if (num_cells_alive > num_max_cells)
 			{
-				cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
+				num_max_cells = num_cells_alive;
+				cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells_alive);
 				food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
 
 			for (j = 0; j < cells_received; j++)
 			{
-				cells[free_position + j] = new_cells[j];
-				accessMatSec(culture_cells, new_cells[j].pos_row, new_cells[j].pos_col) += 1;
-				food_to_share[free_position + j] = accessMatSec(culture, cells[j].pos_row, cells[j].pos_col);
-				printf("Proceso %d iter %d recibe célula en %d\nRow %f col %f mov_row %f mov_col %f choose_mov %f %f %f storage %f age %d random_seq %hu %hu %hu, alive %d\n", rank, iter, arrayPos(cells[j]), cells[j].pos_row, cells[j].pos_col, cells[j].mov_row, cells[j].mov_col, cells[j].choose_mov[0], cells[j].choose_mov[1], cells[j].choose_mov[2], cells[j].storage, cells[j].age, cells[j].random_seq[0], cells[j].random_seq[1], cells[j].random_seq[2], cells[j].alive);
+				cells[free_position + j] = mailbox[j];
+				accessMatSec(culture_cells, mailbox[j].pos_row, mailbox[j].pos_col) += 1;
+				food_to_share[free_position + j] = accessMatSec(culture, mailbox[j].pos_row, mailbox[j].pos_col);
 			}
 		}
-		update_time(timeDelivery);
-
-		
+		free(mailbox);
+		update_time(time4_X);
 
 		/* 4.4. Cell actions */
 		update_time(time4_4);
@@ -881,6 +904,7 @@ int main(int argc, char *argv[])
 			//}
 			//}
 		} // End cell actions
+		free_position = num_cells_alive;
 		num_cells_alive += step_new_cells;
 		update_time(time4_4);
 
@@ -897,16 +921,19 @@ int main(int argc, char *argv[])
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		update_time(time4_7);
-		if (step_new_cells > 0)
-		{
+		if (num_cells_alive > num_max_cells)
+		{			
 			cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
 			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
 			new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
-
+		}
+		if (step_new_cells > 0)
+		{
 			for (j=0; j<step_new_cells; j++)
 				cells[num_cells + j] = new_cells[j];
 			num_cells += step_new_cells;
 		}
+		num_cells = num_cells_alive;
 		update_time(time4_7);
 
 		/* 4.8. Decrease non - harvested food */
@@ -971,15 +998,15 @@ int main(int argc, char *argv[])
 		printf("Execution times for each subsection:\n");
 		printf("\t3.1 - %lf\n", time3_1);
 		printf("\t3.2 - %lf\n", time3_2);
-		printf("\t4.1 - %lf\n", time4_1);
-		printf("\t4.3 - %lf\n", time4_3);
-		printf("\t4.6 - %lf\n", time4_6);
-		printf("\tCell delivery - %lf\n", timeDelivery - time4_6);
-		printf("\t4.4 - %lf\n", time4_4);
-		printf("\t4.5 - %lf\n", time4_5);
-		printf("\t4.7 - %lf\n", time4_7);
-		printf("\t4.8 - %lf\n", time4_8);
-		printf("\t4.9 - %lf\n", time4_9);
+		printf("\t4.1 - %lf\n", max_time4_1);
+		printf("\t4.3 - %lf\n", max_time4_3);
+		printf("\t4.6 - %lf\n", max_time4_6);
+		printf("\t4.X - %lf\n", max_time4_X);
+		printf("\t4.4 - %lf\n", max_time4_4);
+		printf("\t4.5 - %lf\n", max_time4_5);
+		printf("\t4.7 - %lf\n", max_time4_7);
+		printf("\t4.8 - %lf\n", max_time4_8);
+		printf("\t4.9 - %lf\n", max_time4_9);
 	}
 #endif
 
