@@ -130,34 +130,33 @@ void print_status(int iteration, int rows, int columns, float *culture, int num_
 		printf("|");
 		for (j = 0; j < columns; j++)
 		{
-			char symbol;
-			if (accessMat(culture, i, j) >= 20)
-				symbol = '+';
-			else if (accessMat(culture, i, j) >= 10)
-				symbol = '*';
-			else if (accessMat(culture, i, j) >= 5)
-				symbol = '.';
-			else
-				symbol = ' ';
+            char symbol;
+            // if (accessMat(culture, i, j) >= 20)
+            //     symbol = '+';
+            // else if (accessMat(culture, i, j) >= 10)
+            //     symbol = '*';
+            // else if (accessMat(culture, i, j) >= 5)
+            //     symbol = '.';
+            // else
+            //     symbol = ' ';
 
-			int t;
-			int counter = 0;
-			for (t = 0; t < num_cells; t++)
-			{
-				int row = (int)(cells[t].pos_row);
-				int col = (int)(cells[t].pos_col);
-				if (cells[t].alive && row == i && col == j)
-				{
-					counter++;
-				}
-			}
-			if (counter > 9)
-				printf("(M)");
-			else if (counter > 0)
-				printf("(%1d)", counter);
-			else
-				printf(" %c ", symbol);
-		}
+            int t;
+            double counter = 0;
+            for (t = 0; t < num_cells; t++)
+            {
+                int row = (int)(cells[t].pos_row);
+                int col = (int)(cells[t].pos_col);
+                if (cells[t].alive && row == i && col == j)
+                {
+                    counter += cells[t].storage;
+                }
+            }
+            if (counter > 0)
+                printf("(%05.2f)", counter);
+            else
+                //printf(" %c ", symbol);
+                printf(" %05.2f ", (accessMat(culture, i, j)));
+        }
 		printf("|\n");
 	}
 	printf("+");
@@ -712,6 +711,7 @@ int main(int argc, char *argv[])
 				if (mine(cells[i].pos_row, cells[i].pos_col))
 				{
 					accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+					food_to_share[i]=accessMatSec(culture,cells[i].pos_row,cells[i].pos_col);
 				}
 				else
 				{
@@ -760,6 +760,8 @@ int main(int argc, char *argv[])
 		free(cell_destiny);
 		free(index);
 
+		int cellsReceived=0;
+
 		// Send/receive cells moved:
 		for (i = 0; i < nprocs; i++)
 		{
@@ -779,12 +781,26 @@ int main(int argc, char *argv[])
 			else if (cells_moved_from[i] > 0)
 			{
 				MPI_Recv(new_cells, cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
+				new_cells+=cells_moved_from[i]*sizeof(Cell);
+				cellsReceived=cells_moved_from[i];
 				// TODO: juntar new_cells en cells.
 				// Ahora mismo esto está mal: se está sobreescribiendo new_cells todo el rato.
 				// TODO: AccessMat para new_cells.
 			}
 		}
 		free(cells_moved_from);
+		if (cellsReceived > 0)
+		{
+			food_to_share = (float *) realloc(food_to_share,sizeof(float)*num_cells);
+			// WARNING: does cells have the correct size here? [Ref: 4.5.X]
+			for (j = 0; j < cellsReceived; j++){
+				cells[num_cells + j] = new_cells[j];
+				accessMatSec(culture_cells,new_cells[j].pos_row,new_cells[j].pos_col)+=1;
+				food_to_share[num_cells+j]=accessMatSec(culture,cells[j].pos_row,cells[j].pos_col);
+			}
+			num_cells += cellsReceived;
+			new_cells-=cellsReceived * sizeof(Cell);
+		}
 		// TODO: num_cells_alive MUY A FONDO.
 
 		MPI_Allreduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -887,13 +903,6 @@ int main(int argc, char *argv[])
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		update_time(time4_7);
-		if (step_new_cells > 0)
-		{
-			// WARNING: does cells have the correct size here? [Ref: 4.5.X]
-			for (j = 0; j < step_new_cells; j++)
-				cells[num_cells + j] = new_cells[j];
-			num_cells += step_new_cells;
-		}
 		update_time(time4_7);
 
 		/* 4.8. Decrease non - harvested food */
@@ -925,7 +934,7 @@ int main(int argc, char *argv[])
 		// Statistics: Accumulated dead and Max dead cells per step
 		sim_stat.history_dead_cells += step_dead_cells_root;
 		if (step_dead_cells_root > sim_stat.history_max_dead_cells)
-			sim_stat.history_max_dead_cells = step_dead_cells;
+			sim_stat.history_max_dead_cells = step_dead_cells_root;
 		// Statistics: Max alive cells per step
 		if (num_cells_alive > sim_stat.history_max_alive_cells)
 			sim_stat.history_max_alive_cells = num_cells_alive;
