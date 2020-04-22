@@ -368,13 +368,13 @@ int main(int argc, char *argv[])
  * Macro function to get the exact offset in an array for a cell.
  *
  */
-#define arrayPos(cell) ((int)cell.pos_row * columns + (int)cell.pos_col)
+#define arrayPos(cell) ((int)(cell.pos_row) * columns + (int)(cell.pos_col))
 
 /*
  * Macro function to check if a point in a matrix belongs to this process' section.
  *
  */
-#define mine(exp1, exp2) (((int)exp1 * columns + (int)exp2) >= my_begin && ((int)exp1 * columns + (int)exp2) < my_begin + my_size)
+#define mine(exp1, exp2) (((int)(exp1) * columns + (int)(exp2)) >= my_begin && ((int)(exp1) * columns + (int)(exp2)) < my_begin + my_size)
 
 /*
  * Macro functions to get the matrix section a cell belongs to.
@@ -753,12 +753,12 @@ int main(int argc, char *argv[])
 		}
 
 		// Fill cells to send matrix:
-		int tail_offset = 1;
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive && !mine(cells[i].pos_row, cells[i].pos_col))
 			{
 				cells_to_send[cell_destiny[i]][index[cell_destiny[i]]++] = cells[i];
+				printf("Proceso %d iter %d envía célula en %d\nRow %f col %f mov_row %f mov_col %f choose_mov %f %f %f storage %f age %d random_seq %hu %hu %hu, alive %d\n", rank, iter, arrayPos(cells[i]), cells[i].pos_row, cells[i].pos_col, cells[i].mov_row, cells[i].mov_col, cells[i].choose_mov[0], cells[i].choose_mov[1], cells[i].choose_mov[2], cells[i].storage, cells[i].age, cells[i].random_seq[0], cells[i].random_seq[1], cells[i].random_seq[2], cells[i].alive);				
 				cells[i].alive = false;
 			}
 		}
@@ -794,7 +794,7 @@ int main(int argc, char *argv[])
 				{
 					if (cells_moved_to[j] > 0)
 					{
-						MPI_Send(&cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
+						MPI_Send(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
 						free(cells_to_send[j]);
 					}
 				}
@@ -825,6 +825,7 @@ int main(int argc, char *argv[])
 				cells[free_position + j] = new_cells[j];
 				accessMatSec(culture_cells, new_cells[j].pos_row, new_cells[j].pos_col) += 1;
 				food_to_share[free_position + j] = accessMatSec(culture, cells[j].pos_row, cells[j].pos_col);
+				printf("Proceso %d iter %d recibe célula en %d\nRow %f col %f mov_row %f mov_col %f choose_mov %f %f %f storage %f age %d random_seq %hu %hu %hu, alive %d\n", rank, iter, arrayPos(cells[j]), cells[j].pos_row, cells[j].pos_col, cells[j].mov_row, cells[j].mov_col, cells[j].choose_mov[0], cells[j].choose_mov[1], cells[j].choose_mov[2], cells[j].storage, cells[j].age, cells[j].random_seq[0], cells[j].random_seq[1], cells[j].random_seq[2], cells[j].alive);
 			}
 		}
 		update_time(timeDelivery);
