@@ -410,31 +410,43 @@ int main(int argc, char *argv[])
 #endif
 
 	/* 
-	 * Matrix division and MPI constants initialization.
+	 * MPI constants initialization.
+	 *
 	 */
-	int nprocs;
+	int nprocs;		// Number of processes available.
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	MPI_Status stat;
 	MPI_Request request;
-	int fraction = (int)(rows * columns) / nprocs;
-	int remainder = (rows * columns) % nprocs;
+	int tag = 1000;
+
+	/*
+	 * Matrix division.
+	 * Size for each "section" (sub-matrix in each process).
+	 *
+	 */
+	int fraction = (int)(rows * columns) / nprocs;	// Size of matrix for each process.
+	int remainder = (rows * columns) % nprocs;		// Remaining unasigned positions.
 	int my_size = fraction + (rank < remainder);
 
+	/*
+	 * Beginning for each section.
+	 *
+	 */
 	int max_ceil = min(rank, remainder);
 	int max_floor = max(rank - remainder, 0);
 	int my_begin = max_ceil * (fraction + 1) + max_floor * fraction;
 
-	int total_cells = num_cells; //Reduccion de suma de num_cells
+	int total_cells = num_cells;	// Total number of cells in the program.
 
-	//STRUCT -- CELLS
-	// Create datatype for Cells
-	// Number of field blocks
-	int fields = 9;
-	int tag = 1000;
-	// Number of elements per block
-	int array_of_blocklengths[] = {1, 1, 1, 1, 3, 1, 1, 3, 1};
-	// Block displacements
-	MPI_Aint array_of_displacements[] = {
+	/*
+	 * Create datatype for Cells.
+	 *
+	 */
+	int fields = 9;		// Number of field blocks.
+	int array_of_blocklengths[] = {			// Number of elements per block
+		1, 1, 1, 1, 3, 1, 1, 3, 1 
+	};
+	MPI_Aint array_of_displacements[] = {	// Block displacements
 		offsetof(Cell, pos_row),
 		offsetof(Cell, pos_col),
 		offsetof(Cell, mov_row),
@@ -443,20 +455,20 @@ int main(int argc, char *argv[])
 		offsetof(Cell, storage),
 		offsetof(Cell, age),
 		offsetof(Cell, random_seq),
-		offsetof(Cell, alive)};
-	// Block types
-	MPI_Datatype array_of_types[] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_INT, MPI_UNSIGNED_SHORT, MPI_C_BOOL};
+		offsetof(Cell, alive)
+	};
+	MPI_Datatype array_of_types[] = {		// Block types
+		MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_INT, MPI_UNSIGNED_SHORT, MPI_C_BOOL
+	};
 	MPI_Aint lb, extent;
 	MPI_Datatype MPI_Cell, MPI_CellExt;
-
 	// Create basic fields structure
 	MPI_Type_create_struct(fields, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Cell);
-
 	// Resize to cover alignment extent
-	//	...
 	MPI_Type_get_extent(MPI_Cell, &lb, &extent);
 	MPI_Type_create_resized(MPI_Cell, lb, extent, &MPI_CellExt);
 	MPI_Type_commit(&MPI_CellExt);
+
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc(sizeof(float) * (size_t)my_size);
@@ -508,11 +520,12 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
+			// Mark cell to be delelted:
 			cells[i].alive = false;
 		}
 	}
 
-	// Clean non-belonging cells (4.6):
+	// Delete non-belonging cells (4.6):
 	int free_position = 0;
 	for (i = 0; i < total_cells; i++)
 	{
@@ -528,12 +541,13 @@ int main(int argc, char *argv[])
 	cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells);
 	update_time(time3_2);
 
-	// Space for the list of new cells (maximum number of new cells is num_cells)
+	// Space for the list of new cells (maximum number of new cells in 4.4 is num_cells)
 	Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
 
 	/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 	float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
 
+	// Memory errors:
 #ifndef CP_TABLON
 	if (new_cells == NULL)
 	{
@@ -577,15 +591,18 @@ int main(int argc, char *argv[])
 	 * Simulation variables initialization:
 	 *
 	 */
-	float current_max_food = 0.0f;
-	int num_cells_alive = num_cells;
-	int num_max_cells = num_cells;
 	int iter;
+	float current_max_food = 0.0f;
+
+	// For 4.1:
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
-
 	double rand4_1[3 * max_sources];
+
+	// num_cells helpers:
+	int num_cells_alive = num_cells;	// Check the change in num_cells since las iteration.	// TODO: maybe delete?
+	int num_max_cells = num_cells;		// For realloc-ing memory.
 
 	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
 	{
@@ -647,6 +664,7 @@ int main(int argc, char *argv[])
 		update_time(time4_3);
 		int step_dead_cells = 0;
 		int max_age = 0;
+		// Communication buffers:
 		int *cell_destiny = malloc(num_cells * sizeof(int));
 		int *cells_moved_to = malloc(nprocs * sizeof(int));
 		for (i = 0; i < nprocs; i++)
@@ -654,10 +672,9 @@ int main(int argc, char *argv[])
 			cells_moved_to[i] = 0;
 		}
 
+		// 4.3.0
 		for (i = 0; i < num_cells; i++)
 		{
-			// Antes se comprobaba si cells[i].alive
-			// (Aquí las células siempre están vivas.)
 			cells[i].age++;
 			// Statistics: Max age of a cell in the simulation history
 			if (cells[i].age > sim_stat.history_max_age)
@@ -702,15 +719,15 @@ int main(int argc, char *argv[])
 				/* 4.3.3. Update position moving in the choosen direction */
 				cells[i].pos_row += cells[i].mov_row;
 				cells[i].pos_col += cells[i].mov_col;
-				// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
 
+				// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
 				if (cells[i].pos_row < 0)
 					cells[i].pos_row += rows;
-				if (cells[i].pos_row >= rows)
+				if (cells[i].pos_row >= rows)	// These can't be elsed.
 					cells[i].pos_row -= rows;
 				if (cells[i].pos_col < 0)
 					cells[i].pos_col += columns;
-				if (cells[i].pos_col >= columns)
+				if (cells[i].pos_col >= columns)// These can't be elsed.
 					cells[i].pos_col -= columns;
 			}
 			/* 4.3.4. Annotate that there is one more cell in this culture position */
@@ -733,9 +750,11 @@ int main(int argc, char *argv[])
 		// Create cells to send matrix:
 		Cell **cells_to_send = (Cell **)malloc(nprocs * sizeof(Cell *));
 
-		// Send/receive number of cells moved:
+		// Number of cells received from each process:
 		int *cells_moved_from = (int *)malloc(nprocs * sizeof(int));
+		// Displacement in array of cells received for each process:
 		int *index = (int *)malloc(nprocs * sizeof(int));
+		// Send/receive number of cells moved:
 		for (i = 0; i < nprocs; i++)
 		{
 			if (rank == i)
@@ -788,8 +807,9 @@ int main(int argc, char *argv[])
 		num_cells_alive = free_position;
 		update_time(time4_6);
 
-		int cells_received = 0;
+		// Allocate memory for received cells:
 		int cells_to_receive = 0;
+		int cells_received = 0;	// Displacement in the array.
 		for (i = 0; i < nprocs; i++)
 		{
 			if (rank != i)
@@ -798,6 +818,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		Cell *mailbox = (Cell *)malloc(cells_to_receive * sizeof(Cell));
+
 		// Send/receive cells moved:
 		for (i = 0; i < nprocs; i++)
 		{
@@ -826,6 +847,7 @@ int main(int argc, char *argv[])
 		if (cells_received > 0)
 		{
 			num_cells_alive  += cells_received;
+			// Reallocate memory, if the list of cells is the biggest one so far:
 			if (num_cells_alive > num_max_cells)
 			{
 				num_max_cells = num_cells_alive;
@@ -850,8 +872,6 @@ int main(int argc, char *argv[])
 		int step_new_cells = 0;
 		for (i = 0; i < num_cells_alive; i++) // Antes se ejecutaba hasta num_cells
 		{
-			//if (cells[i].alive)
-			//{
 			/* 4.4.1. Food harvesting */
 			float food = food_to_share[i];
 
@@ -890,8 +910,6 @@ int main(int argc, char *argv[])
 				cell_mutation(&cells[i]);
 				cell_mutation(&new_cells[step_new_cells - 1]);
 			}
-			//}
-			//}
 		} // End cell actions
 		free_position = num_cells_alive;
 		num_cells_alive += step_new_cells;
