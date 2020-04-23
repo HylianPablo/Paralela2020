@@ -437,34 +437,36 @@ int main(int argc, char *argv[])
 	 * Size for each "section" (sub-matrix in each process).
 	 *
 	 */
-	int fraction = (int)(rows * columns) / nprocs; // Size of matrix for each process.
+	int fraction = (rows * columns)/nprocs; // Size of matrix for each process.
 	if (fraction < 200)
 	{
-		fraction = min(200,rows*columns);
-		nprocs = rows * columns / fraction;
-		if (rank > nprocs)
-		{
-			/* 5. Stop global time */
-			MPI_Barrier(MPI_COMM_WORLD);
-
-			/* 7. Free resources */
-			free(culture);
-			free(culture_cells);
-			free(cells);
-
-			/* 8. End */
-			MPI_Finalize();
-			return 0;
-		}
+		fraction = min(200, rows * columns);
+		nprocs = (rows * columns)/fraction;
 	}
+	/*
+	 * Create program communicator.
+	 * (In case we excluded some processes earlier.)
+	 *
+	 */
 	MPI_Comm alt_comm;
-	int part = 0;
-	if (rank < nprocs)
+	// Finish unwanted processes
+	if (rank >= nprocs)
 	{
-		part = 1;
+		MPI_Comm_split(MPI_COMM_WORLD, MPI_UNDEFINED, 0, &alt_comm);
+
+		/* 5. Stop global time */
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		/* 7. Free resources */
+		free(culture);
+		free(culture_cells);
+		free(cells);
+
+		/* 8. End */
+		MPI_Finalize();
+		return 0;
 	}
-	MPI_Comm_split(MPI_COMM_WORLD, part, rank % nprocs, &alt_comm);
-	
+	MPI_Comm_split(MPI_COMM_WORLD, 1, rank % nprocs, &alt_comm);	
 
 	int remainder = (rows * columns) % nprocs; // Remaining unasigned positions.
 	int my_size = fraction + (rank < remainder);
@@ -483,21 +485,21 @@ int main(int argc, char *argv[])
 	 * Create datatype for Cells.
 	 *
 	 */
-	int fields = 9;				   // Number of field blocks.
-	int array_of_blocklengths[] = {// Number of elements per block
-								   1, 1, 1, 1, 3, 1, 1, 3, 1};
-	MPI_Aint array_of_displacements[] = {// Block displacements
-										 offsetof(Cell, pos_row),
-										 offsetof(Cell, pos_col),
-										 offsetof(Cell, mov_row),
-										 offsetof(Cell, mov_col),
-										 offsetof(Cell, choose_mov),
-										 offsetof(Cell, storage),
-										 offsetof(Cell, age),
-										 offsetof(Cell, random_seq),
-										 offsetof(Cell, alive)};
-	MPI_Datatype array_of_types[] = {// Block types
-									 MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_INT, MPI_UNSIGNED_SHORT, MPI_C_BOOL};
+	int fields = 9;				   			// Number of field blocks.
+	int array_of_blocklengths[] = {			// Number of elements per block
+		1, 1, 1, 1, 3, 1, 1, 3, 1};
+	MPI_Aint array_of_displacements[] = {	// Block displacements
+		offsetof(Cell, pos_row),
+		offsetof(Cell, pos_col),
+		offsetof(Cell, mov_row),
+		offsetof(Cell, mov_col),
+		offsetof(Cell, choose_mov),
+		offsetof(Cell, storage),
+		offsetof(Cell, age),
+		offsetof(Cell, random_seq),
+		offsetof(Cell, alive)};
+	MPI_Datatype array_of_types[] = {		// Block types
+		MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_INT, MPI_UNSIGNED_SHORT, MPI_C_BOOL};
 	MPI_Aint lb, extent;
 	MPI_Datatype MPI_Cell, MPI_CellExt;
 	// Create basic fields structure
@@ -518,7 +520,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
 		MPI_Abort(alt_comm, EXIT_FAILURE);
 	}
-#endif
+#endif	
 
 	// 3.1
 	update_time(time3_1);
@@ -801,7 +803,7 @@ int main(int argc, char *argv[])
 				{
 					if (rank != j)
 					{
-						MPI_Send(&cells_moved_to[j], 1, MPI_INT, j, tag,alt_comm);
+						MPI_Send(&cells_moved_to[j], 1, MPI_INT, j, tag, alt_comm);
 						cells_to_send[j] = (Cell *)malloc(cells_moved_to[j] * sizeof(Cell));
 						index[j] = 0;
 					}
