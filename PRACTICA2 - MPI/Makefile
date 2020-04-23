@@ -7,7 +7,7 @@ CC=mpicc
 evolution: funeralDeGhana.c
 	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
 
-debug: evolution_mpi.c
+debug: funeralDeGhana.c
 	$(CC) $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
 
 original: original-mpi.c
