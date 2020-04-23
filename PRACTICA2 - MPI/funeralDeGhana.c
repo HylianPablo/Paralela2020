@@ -437,7 +437,7 @@ int main(int argc, char *argv[])
 	 * Size for each "section" (sub-matrix in each process).
 	 *
 	 */
-	int fraction = (rows * columns)/nprocs; // Size of matrix for each process.
+	int fraction = ((long)rows * (long)columns)/nprocs; // Size of matrix for each process.
 	if (fraction < 200)
 	{
 		fraction = min(200, rows * columns);
@@ -957,7 +957,7 @@ int main(int argc, char *argv[])
 		update_time(time4_5);
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i = 0; i < free_position; i++)
-			if (mine(cells[i].pos_row, cells[i].pos_col)) //antes comprobaba tambien cells.alive
+			if (mine(cells[i].pos_row, cells[i].pos_col))
 				accessMatSec(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
 		update_time(time4_5);
 
@@ -997,16 +997,16 @@ int main(int argc, char *argv[])
 		update_time(time4_9);
 		// Reductions:
 		int max_age_root, step_new_cells_root, step_dead_cells_root;
-		float current_max_food_root;
+		float max_food;
 		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, alt_comm);
-		MPI_Reduce(&current_max_food, &current_max_food_root, 1, MPI_FLOAT, MPI_MAX, 0, alt_comm);
 		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, alt_comm);
 		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, alt_comm);
+		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, alt_comm);
 		MPI_Allreduce(&num_cells_alive, &total_cells, 1, MPI_INT, MPI_SUM, alt_comm);
+		current_max_food = max_food;
 		if (rank == 0)
 		{
 			sim_stat.history_max_age = max_age_root;
-			current_max_food = current_max_food_root;
 		}
 
 		// Statistics: Max food
