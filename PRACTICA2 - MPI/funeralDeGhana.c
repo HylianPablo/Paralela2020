@@ -403,7 +403,6 @@ int main(int argc, char *argv[])
 	double time3_2 = 0.0;
 	double time4_1 = 0.0;
 	double time4_3 = 0.0;
-	double time4_6 = 0.0;
 	double time4_X = 0.0;
 	double time4_4 = 0.0;
 	double time4_5 = 0.0;
@@ -413,7 +412,6 @@ int main(int argc, char *argv[])
 
 	double max_time4_1 = 0.0;
 	double max_time4_3 = 0.0;
-	double max_time4_6 = 0.0;
 	double max_time4_X = 0.0;
 	double max_time4_4 = 0.0;
 	double max_time4_5 = 0.0;
@@ -553,19 +551,12 @@ int main(int argc, char *argv[])
 	// Space for the list of new cells (maximum number of new cells in 4.4 is num_cells)
 	Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
 
-	/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
-	float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
 
 	// Memory errors:
 #ifndef CP_TABLON
 	if (new_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
-		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-	}
-	if (food_to_share == NULL)
-	{
-		fprintf(stderr, "-- Error allocating food to share structures for: %d cells\n", num_cells);
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 #endif
@@ -619,8 +610,7 @@ int main(int argc, char *argv[])
 #ifndef CP_TABLON
 		max_time4_1 = max(max_time4_1, time4_1);
 		max_time4_3 = max(max_time4_3, time4_3);
-		max_time4_6 = max(max_time4_6, time4_6);
-		max_time4_X = max(max_time4_X, time4_X - time4_6);
+		max_time4_X = max(max_time4_X, time4_X);
 		max_time4_4 = max(max_time4_4, time4_4);
 		max_time4_5 = max(max_time4_5, time4_5);
 		max_time4_7 = max(max_time4_7, time4_7);
@@ -744,7 +734,6 @@ int main(int argc, char *argv[])
 			if (mine(cells[i].pos_row, cells[i].pos_col))
 			{
 				accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
-				food_to_share[i] = accessMatSec(culture, cells[i].pos_row, cells[i].pos_col);
 			}
 			else
 			{
@@ -798,7 +787,6 @@ int main(int argc, char *argv[])
 		free(index);
 
 		/* 4.6. Clean dead cells from the original list */
-		//update_time(time4_6);		
 		// 4.6.1. Move alive cells to the left to substitute dead cells
 		free_position = 0;
 		for (i = 0; i < num_cells; i++)
@@ -808,13 +796,11 @@ int main(int argc, char *argv[])
 				if (free_position != i)
 				{
 					cells[free_position] = cells[i];
-					food_to_share[free_position] = food_to_share[i];
 				}
 				free_position++;
 			}
 		}
 		num_cells_alive = free_position;
-		//update_time(time4_6);
 
 		// Allocate memory for received cells:
 		int cells_to_receive = 0;
@@ -861,7 +847,6 @@ int main(int argc, char *argv[])
 			{
 				num_max_cells = num_cells_alive;
 				cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells_alive);
-				food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
 
@@ -869,7 +854,6 @@ int main(int argc, char *argv[])
 			{
 				cells[free_position + j] = mailbox[j];
 				accessMatSec(culture_cells, mailbox[j].pos_row, mailbox[j].pos_col) += 1;
-				food_to_share[free_position + j] = accessMatSec(culture, mailbox[j].pos_row, mailbox[j].pos_col);
 			}
 		}
 		free(mailbox);
@@ -878,13 +862,11 @@ int main(int argc, char *argv[])
 		/* 4.4. Cell actions */
 		update_time(time4_4);
 		int step_new_cells = 0;
-		for (i = 0; i < num_cells_alive; i++) // Antes se ejecutaba hasta num_cells
+		for (i = 0; i < num_cells_alive; i++)
 		{
 			/* 4.4.1. Food harvesting */
-			float food = food_to_share[i];
+			float food = accessMatSec(culture, cells[i].pos_row, cells[i].pos_col);
 
-			//if (mine(cells[i].pos_row, cells[i].pos_col))
-			//{
 			short count = accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col);
 
 			float my_food = food / count;
@@ -939,7 +921,6 @@ int main(int argc, char *argv[])
 		if (num_cells_alive > num_max_cells)
 		{
 			cells = (Cell *)realloc(cells, sizeof(Cell) * (num_cells_alive));
-			food_to_share = (float *)realloc(food_to_share, sizeof(float) * num_cells_alive);
 			new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 		}
 		if (step_new_cells > 0)
@@ -1009,7 +990,6 @@ int main(int argc, char *argv[])
 
 	// Let's not be bad...
 	free(new_cells);
-	free(food_to_share);
 
 #ifndef CP_TABLON
 	if (rank == 0)
@@ -1019,7 +999,6 @@ int main(int argc, char *argv[])
 		printf("\t3.2 - %lf\n", time3_2);
 		printf("\t4.1 - %lf\n", max_time4_1);
 		printf("\t4.3 - %lf\n", max_time4_3);
-		printf("\t4.6 - %lf\n", max_time4_6);
 		printf("\t4.X - %lf\n", max_time4_X);
 		printf("\t4.4 - %lf\n", max_time4_4);
 		printf("\t4.5 - %lf\n", max_time4_5);
