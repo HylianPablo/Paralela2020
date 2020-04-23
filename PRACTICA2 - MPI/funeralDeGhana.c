@@ -390,10 +390,10 @@ int main(int argc, char *argv[])
  *
  */
 #ifndef CP_TABLON
-#define update_time(timer)           \
-	{                                \
-		MPI_Barrier(alt_comm); \
-		timer = MPI_Wtime() - timer; \
+#define update_time(timer)          \
+	{                               \
+		MPI_Barrier(MPI_COMM_WORLD); 		\
+		timer = MPI_Wtime() - timer;\
 	}
 #else
 #define update_time(timer)
@@ -438,36 +438,6 @@ int main(int argc, char *argv[])
 	 *
 	 */
 	int fraction = ((long)rows * (long)columns)/nprocs; // Size of matrix for each process.
-	if (fraction < 200)
-	{
-		fraction = min(200, rows * columns);
-		nprocs = (rows * columns)/fraction;
-	}
-	/*
-	 * Create program communicator.
-	 * (In case we excluded some processes earlier.)
-	 *
-	 */
-	MPI_Comm alt_comm;
-	// Finish unwanted processes
-	if (rank >= nprocs)
-	{
-		MPI_Comm_split(MPI_COMM_WORLD, MPI_UNDEFINED, 0, &alt_comm);
-
-		/* 5. Stop global time */
-		MPI_Barrier(MPI_COMM_WORLD);
-
-		/* 7. Free resources */
-		free(culture);
-		free(culture_cells);
-		free(cells);
-
-		/* 8. End */
-		MPI_Finalize();
-		return 0;
-	}
-	MPI_Comm_split(MPI_COMM_WORLD, 1, rank % nprocs, &alt_comm);	
-
 	int remainder = (rows * columns) % nprocs; // Remaining unasigned positions.
 	int my_size = fraction + (rank < remainder);
 
@@ -518,7 +488,7 @@ int main(int argc, char *argv[])
 	if (culture == NULL || culture_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating culture structures for size: %d x %d \n", rows, columns);
-		MPI_Abort(alt_comm, EXIT_FAILURE);
+		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 #endif	
 
@@ -591,12 +561,12 @@ int main(int argc, char *argv[])
 	if (new_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
-		MPI_Abort(alt_comm, EXIT_FAILURE);
+		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 	if (food_to_share == NULL)
 	{
 		fprintf(stderr, "-- Error allocating food to share structures for: %d cells\n", num_cells);
-		MPI_Abort(alt_comm, EXIT_FAILURE);
+		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 #endif
 
@@ -803,7 +773,7 @@ int main(int argc, char *argv[])
 				{
 					if (rank != j)
 					{
-						MPI_Send(&cells_moved_to[j], 1, MPI_INT, j, tag, alt_comm);
+						MPI_Send(&cells_moved_to[j], 1, MPI_INT, j, tag, MPI_COMM_WORLD);
 						cells_to_send[j] = (Cell *)malloc(cells_moved_to[j] * sizeof(Cell));
 						index[j] = 0;
 					}
@@ -811,7 +781,7 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-				MPI_Recv(&cells_moved_from[i], 1, MPI_INT, i, tag, alt_comm, &stat);
+				MPI_Recv(&cells_moved_from[i], 1, MPI_INT, i, tag, MPI_COMM_WORLD, &stat);
 			}
 		}
 
@@ -828,7 +798,7 @@ int main(int argc, char *argv[])
 		free(index);
 
 		/* 4.6. Clean dead cells from the original list */
-		update_time(time4_6);
+		//update_time(time4_6);		
 		// 4.6.1. Move alive cells to the left to substitute dead cells
 		free_position = 0;
 		for (i = 0; i < num_cells; i++)
@@ -844,7 +814,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		num_cells_alive = free_position;
-		update_time(time4_6);
+		//update_time(time4_6);
 
 		// Allocate memory for received cells:
 		int cells_to_receive = 0;
@@ -867,7 +837,7 @@ int main(int argc, char *argv[])
 				{
 					if (cells_moved_to[j] > 0)
 					{
-						MPI_Send(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, alt_comm);
+						MPI_Send(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
 						free(cells_to_send[j]);
 					}
 				}
@@ -876,7 +846,7 @@ int main(int argc, char *argv[])
 			}
 			else if (cells_moved_from[i] > 0)
 			{
-				MPI_Recv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, tag, alt_comm, &stat);
+				MPI_Recv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
 				cells_received += cells_moved_from[i];
 			}
 		}
@@ -998,11 +968,11 @@ int main(int argc, char *argv[])
 		// Reductions:
 		int max_age_root, step_new_cells_root, step_dead_cells_root;
 		float max_food;
-		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, alt_comm);
-		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, alt_comm);
-		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, alt_comm);
-		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, alt_comm);
-		MPI_Allreduce(&num_cells_alive, &total_cells, 1, MPI_INT, MPI_SUM, alt_comm);
+		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
+		MPI_Allreduce(&num_cells_alive, &total_cells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		current_max_food = max_food;
 		if (rank == 0)
 		{
