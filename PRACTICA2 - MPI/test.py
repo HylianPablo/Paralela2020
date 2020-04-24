@@ -7,7 +7,7 @@ system("chmod 755 t")
 system("./t > x")
 x = open("x", "r").readlines()[13::14]
 o = open("original.txt", "r").readlines()
-remove("x")
+#remove("x")
 remove("t")
 
 diff = [i for i in range(len(x)) if x[i] != o[i]]
