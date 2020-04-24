@@ -553,25 +553,22 @@ int main(int argc, char *argv[])
 
 	// Space for the list of new cells (maximum number of new cells in 4.4 is num_cells):
 	Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
-	// Space for the destiny of moved cells:
-	int *cell_destiny = (int *)malloc(sizeof(int) * (size_t)num_cells);
 	// Number of cells moved to each process each iteration:
 	int *cells_moved_to = (int *)calloc(sizeof(int), (size_t)nprocs);
+	int offsets_to[nprocs];
+	offsets_to[0] = 0;
 	// Number of cells received from each process each iteration:
 	int cells_moved_from[nprocs];
-	// Cells to send matrix:
-	Cell *cells_to_send[nprocs];
+	int offsets_from[nprocs];
+	offsets_from[0] = 0;
+	// Auxiliary index for each process.
+	int index[nprocs];
 
 	// Memory errors:
 #ifndef CP_TABLON
 	if (new_cells == NULL)
 	{
 		fprintf(stderr, "-- Error allocating new cells structures for: %d cells\n", num_cells);
-		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-	}
-	if (cell_destiny == NULL)
-	{
-		fprintf(stderr, "-- Error allocating cell destiny structures for: %d cells\n", num_cells);
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 	if (cells_moved_to == NULL)
@@ -582,11 +579,6 @@ int main(int argc, char *argv[])
 	if (cells_moved_from == NULL)
 	{
 		fprintf(stderr, "-- Error allocating received data structures for: %d processes\n", nprocs);
-		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
-	}
-	if (cells_to_send == NULL)
-	{
-		fprintf(stderr, "-- Error allocating cells to send structures for: %d processes\n", nprocs);
 		MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
 	}
 #endif
@@ -709,14 +701,14 @@ int main(int argc, char *argv[])
 
 		/* 4.3. Cell movements */
 		update_time(time4_3);
-		for (i = 0; i < nprocs; i++)
+		/*for (i = 0; i < nprocs; i++)
 		{
 			if (cells_moved_to[i] > 0)
 			{
 				MPI_Wait(&request[0][i], MPI_STATUS_IGNORE);
 				cells_moved_to[i] = 0;
 			}
-		}
+		}*/
 
 		int step_dead_cells = 0;
 		int max_age = 0;
@@ -787,7 +779,6 @@ int main(int argc, char *argv[])
 			{
 				int cell_section = section(cells[i]);
 				cells_moved_to[cell_section]++;
-				cell_destiny[i] = cell_section;
 			}
 		} // End cell movements
 		update_time(time4_3);
@@ -797,29 +788,27 @@ int main(int argc, char *argv[])
 		// Number of cells received from each process:
 		MPI_Alltoall(cells_moved_to, 1, MPI_INT, cells_moved_from, 1, MPI_INT, MPI_COMM_WORLD);
 
-		// Allocate memory for received cells:
-		int cells_to_receive = 0;
-		int cells_received = 0; // Displacement in the array.
-		for (i = 0; i < nprocs; i++)
+		// Fill counts and displacements for MPI_Alltoallv:
+		for (i = 1; i < nprocs; i++)
 		{
-			cells_to_send[i] = (Cell *)malloc((size_t)cells_moved_to[i] * sizeof(Cell));
-			if (rank != i)
-			{
-				cells_to_receive += cells_moved_from[i];
-			}
+			index[i] = 0;
+			offsets_to[i] = offsets_to[i - 1] + cells_moved_to[i - 1];
+			offsets_from[i] = offsets_from[i - 1] + cells_moved_from[i - 1];
 		}
+		// Allocate memory for send and receive lists:
+		int cells_received = offsets_from[i - 1] + cells_moved_from[i - 1];
+		Cell *cells_to_send = (Cell *)malloc(sizeof(Cell) * (size_t)(offsets_to[i - 1] + cells_moved_to[i - 1]));
+		Cell *mailbox = (Cell *)malloc(sizeof(Cell) * (size_t)cells_received);
 
-		int *index = (int *)calloc(sizeof(int), (size_t)nprocs);
 		// Fill cells to send matrix:
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive && !mine(cells[i].pos_row, cells[i].pos_col))
 			{
-				cells_to_send[cell_destiny[i]][index[cell_destiny[i]]++] = cells[i];
+				cells_to_send[offsets_to[i] + index[i]++] = cells[i];
 				cells[i].alive = false;
 			}
 		}
-		free(index);
 
 		/* 4.6. Clean dead cells from the original list */
 		// 4.6.1. Move alive cells to the left to substitute dead cells
@@ -837,10 +826,9 @@ int main(int argc, char *argv[])
 		}
 		num_cells_alive = free_position;
 
-
-		// Send/receive cells moved:
-		Cell *mailbox = (Cell *)malloc((size_t)cells_to_receive * sizeof(Cell));
-		for (i = 0; i < nprocs; i++)
+		MPI_Alltoallv(cells_to_send, cells_moved_to, offsets_to, MPI_CellExt, mailbox, cells_moved_from, offsets_from, MPI_CellExt, MPI_COMM_WORLD);
+		free(cells_to_send);
+		/*for (i = 0; i < nprocs; i++)
 		{
 			if (rank == i)
 			{
@@ -858,7 +846,7 @@ int main(int argc, char *argv[])
 				MPI_Irecv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, TAG, MPI_COMM_WORLD, &request[1][i]);
 				cells_received += cells_moved_from[i];
 			}
-		}
+		}*/
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		if (cells_received > 0)
@@ -869,17 +857,16 @@ int main(int argc, char *argv[])
 			{
 				num_max_cells = num_cells_alive;
 				cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells_alive);
-				cell_destiny = (int *)realloc(cell_destiny, sizeof(int) * num_cells_alive);
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
 
-			for (i = 0; i < nprocs; i++)
+			/*for (i = 0; i < nprocs; i++)
 			{
 				if (cells_moved_from[i] > 0)
 				{
 					MPI_Wait(&request[1][i], MPI_STATUS_IGNORE);
 				}
-			}
+			}*/
 
 			for (i = 0; i < cells_received; i++)
 			{
@@ -952,7 +939,6 @@ int main(int argc, char *argv[])
 		{
 			num_max_cells = num_cells_alive;
 			cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells_alive);
-			cell_destiny = (int *)realloc(cell_destiny, sizeof(int) * num_cells_alive);
 			new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 		}
 		if (step_new_cells > 0)
@@ -1018,7 +1004,6 @@ int main(int argc, char *argv[])
 	// Let's not be bad...
 	free(new_cells);
 	free(cells_moved_to);
-	free(cell_destiny);
 	free(rand4_1);
 
 #ifndef CP_TABLON
