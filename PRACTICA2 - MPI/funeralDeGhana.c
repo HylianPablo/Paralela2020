@@ -411,6 +411,15 @@ int main(int argc, char *argv[])
 	double time4_8 = 0.0;
 	double time4_9 = 0.0;
 
+	double sum_time4_1 = 0.0;
+	double sum_time4_3 = 0.0;
+	double sum_time4_X = 0.0;
+	double sum_time4_4 = 0.0;
+	double sum_time4_5 = 0.0;
+	double sum_time4_7 = 0.0;
+	double sum_time4_8 = 0.0;
+	double sum_time4_9 = 0.0;
+
 	double max_time4_1 = 0.0;
 	double max_time4_3 = 0.0;
 	double max_time4_X = 0.0;
@@ -441,7 +450,7 @@ int main(int argc, char *argv[])
 	int remainder = (rows * columns) % nprocs; // Remaining unasigned positions.
 	int my_size = fraction + (rank < remainder);
 
-	request = (MPI_Request *)malloc(sizeof(MPI_Request) * (size_t)max(3, nprocs));
+	request = (MPI_Request *)malloc(sizeof(MPI_Request) * (size_t)nprocs);
 
 	/*
 	 * Beginning for each section.
@@ -595,7 +604,7 @@ int main(int argc, char *argv[])
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
-	double *rand4_1 = (double *)malloc(3 * max_sources * sizeof(double));
+	double rand4_1[3 * max_sources];
 
 	// num_cells helpers:
 	int num_cells_alive = num_cells; // Check the change in num_cells since las iteration.	// TODO: maybe delete?
@@ -604,6 +613,15 @@ int main(int argc, char *argv[])
 	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
 	{
 #ifndef CP_TABLON
+		sum_time4_1 += time4_1;
+		sum_time4_3 += time4_3;
+		sum_time4_X += time4_X;
+		sum_time4_4 += time4_4;
+		sum_time4_5 += time4_5;
+		sum_time4_7 += time4_7;
+		sum_time4_8 += time4_8;
+		sum_time4_9 += time4_9;
+
 		max_time4_1 = max(max_time4_1, time4_1);
 		max_time4_3 = max(max_time4_3, time4_3);
 		max_time4_X = max(max_time4_X, time4_X);
@@ -623,6 +641,7 @@ int main(int argc, char *argv[])
 		time4_9 = 0.0;
 #endif
 		/* 4.1. Spreading new food */
+		update_time(time4_1);
 		// Across the whole culture
 		for (i = 0; i < num_new_sources; i++)
 		{
@@ -662,6 +681,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+		update_time(time4_1);
 
 		/* 4.3. Cell movements */
 		update_time(time4_3);
@@ -814,7 +834,7 @@ int main(int argc, char *argv[])
 			}
 			else if (cells_moved_from[i] > 0)
 			{
-				MPI_Irecv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, TAG, MPI_COMM_WORLD, &request[i]);
+				MPI_Recv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 				cells_received += cells_moved_from[i];
 			}
 		}
@@ -831,13 +851,6 @@ int main(int argc, char *argv[])
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
 
-			for (i = 0; i < nprocs; i++)
-			{
-				if (cells_moved_from[i] > 0)
-				{
-					MPI_Wait(&request[i], MPI_STATUS_IGNORE);
-				}
-			}
 			for (i = 0; i < cells_received; i++)
 			{
 				cells[free_position + i] = mailbox[i];
@@ -923,7 +936,6 @@ int main(int argc, char *argv[])
 
 		/* 4.8. Decrease non - harvested food */
 		update_time(time4_8);
-		current_max_food = 0.0f;
 		for (i = 0; i < my_size; i++)
 		{
 			culture_cells[i] = 0;
@@ -938,9 +950,9 @@ int main(int argc, char *argv[])
 		// Reductions:
 		int max_age_root, step_new_cells_root, step_dead_cells_root;
 		float max_food;
-		MPI_Ireduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD, &request[0]);
-		MPI_Ireduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD, &request[1]);
-		MPI_Ireduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD, &request[2]);
+		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
 		MPI_Allreduce(&num_cells_alive, &total_cells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		current_max_food = max_food;
@@ -982,14 +994,14 @@ int main(int argc, char *argv[])
 		printf("Execution times for each subsection:\n");
 		printf("\t3.1 - %lf\n", time3_1);
 		printf("\t3.2 - %lf\n", time3_2);
-		printf("\t4.1 - %lf\n", max_time4_1);
-		printf("\t4.3 - %lf\n", max_time4_3);
-		printf("\t4.X - %lf\n", max_time4_X);
-		printf("\t4.4 - %lf\n", max_time4_4);
-		printf("\t4.5 - %lf\n", max_time4_5);
-		printf("\t4.7 - %lf\n", max_time4_7);
-		printf("\t4.8 - %lf\n", max_time4_8);
-		printf("\t4.9 - %lf\n", max_time4_9);
+		printf("\t4.1 - %lf (max: %lf)\n", sum_time4_1, max_time4_1);
+		printf("\t4.3 - %lf (max: %lf)\n", sum_time4_3, max_time4_3);
+		printf("\t4.X - %lf (max: %lf)\n", sum_time4_X, max_time4_X);
+		printf("\t4.4 - %lf (max: %lf)\n", sum_time4_4, max_time4_4);
+		printf("\t4.5 - %lf (max: %lf)\n", sum_time4_5, max_time4_5);
+		printf("\t4.7 - %lf (max: %lf)\n", sum_time4_7, max_time4_7);
+		printf("\t4.8 - %lf (max: %lf)\n", sum_time4_8, max_time4_8);
+		printf("\t4.9 - %lf (max: %lf)\n", sum_time4_9, max_time4_9);
 	}
 #endif
 	/*
