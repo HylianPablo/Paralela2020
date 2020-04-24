@@ -551,17 +551,17 @@ int main(int argc, char *argv[])
 	cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells);
 	update_time(time3_2);
 
-	// Space for the list of food per cell.
+	// Space for the list of food per cell:
 	float *food_to_share = (float *)malloc(sizeof(float) * num_cells);
-	// Space for the list of new cells (maximum number of new cells in 4.4 is num_cells)
+	// Space for the list of new cells (maximum number of new cells in 4.4 is num_cells):
 	Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
-
+	// Space for the destiny of moved cells:
 	int *cell_destiny = (int *)malloc(sizeof(int) * (size_t)num_cells);
-
+	// Number of cells moved to each process each iteration:
 	int *cells_moved_to = (int *)calloc(sizeof(int), (size_t)nprocs);
-	// Number of cells received from each process:
+	// Number of cells received from each process each iteration:
 	int *cells_moved_from = (int *)malloc(sizeof(int) * (size_t)nprocs);	
-	// Create cells to send matrix:
+	// Cells to send matrix:
 	Cell **cells_to_send = (Cell **)malloc(sizeof(Cell *) * (size_t)nprocs);
 
 	// Memory errors:
