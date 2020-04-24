@@ -406,7 +406,6 @@ int main(int argc, char *argv[])
 	double time4_3 = 0.0;
 	double time4_X = 0.0;
 	double time4_4 = 0.0;
-	double time4_5 = 0.0;
 	double time4_7 = 0.0;
 	double time4_8 = 0.0;
 	double time4_9 = 0.0;
@@ -415,7 +414,6 @@ int main(int argc, char *argv[])
 	double sum_time4_3 = 0.0;
 	double sum_time4_X = 0.0;
 	double sum_time4_4 = 0.0;
-	double sum_time4_5 = 0.0;
 	double sum_time4_7 = 0.0;
 	double sum_time4_8 = 0.0;
 	double sum_time4_9 = 0.0;
@@ -424,7 +422,6 @@ int main(int argc, char *argv[])
 	double max_time4_3 = 0.0;
 	double max_time4_X = 0.0;
 	double max_time4_4 = 0.0;
-	double max_time4_5 = 0.0;
 	double max_time4_7 = 0.0;
 	double max_time4_8 = 0.0;
 	double max_time4_9 = 0.0;
@@ -619,7 +616,7 @@ int main(int argc, char *argv[])
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
-	double *rand4_1 = malloc(sizeof(double) * (size_t)(3 * max_sources));
+	double rand4_1[3 * max_sources];
 
 	// num_cells helpers:
 	int num_cells_alive = num_cells; // Check the change in num_cells since las iteration.	// TODO: maybe delete?
@@ -632,7 +629,6 @@ int main(int argc, char *argv[])
 		sum_time4_3 += time4_3;
 		sum_time4_X += time4_X;
 		sum_time4_4 += time4_4;
-		sum_time4_5 += time4_5;
 		sum_time4_7 += time4_7;
 		sum_time4_8 += time4_8;
 		sum_time4_9 += time4_9;
@@ -641,7 +637,6 @@ int main(int argc, char *argv[])
 		max_time4_3 = max(max_time4_3, time4_3);
 		max_time4_X = max(max_time4_X, time4_X);
 		max_time4_4 = max(max_time4_4, time4_4);
-		max_time4_5 = max(max_time4_5, time4_5);
 		max_time4_7 = max(max_time4_7, time4_7);
 		max_time4_8 = max(max_time4_8, time4_8);
 		max_time4_9 = max(max_time4_9, time4_9);
@@ -650,7 +645,6 @@ int main(int argc, char *argv[])
 		time4_3 = 0.0;
 		time4_X = 0.0;
 		time4_4 = 0.0;
-		time4_5 = 0.0;
 		time4_7 = 0.0;
 		time4_8 = 0.0;
 		time4_9 = 0.0;
@@ -894,13 +888,6 @@ int main(int argc, char *argv[])
 		num_cells_alive += step_new_cells;
 		update_time(time4_4);
 
-		/* 4.5. Clean ancillary data structures */
-		update_time(time4_5);
-		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
-		for (i = 0; i < free_position; i++)
-			accessMatSec(culture, cells[i].pos_row, cells[i].pos_col) = 0.0f;
-		update_time(time4_5);
-
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
 		num_cells = free_position;
 
@@ -922,41 +909,48 @@ int main(int argc, char *argv[])
 		update_time(time4_7);
 
 		/* 4.8. Decrease non - harvested food */
+		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
+		/* 4.5. Clean ancillary data structures */
 		update_time(time4_8);
 		for (i = 0; i < my_size; i++)
 		{
-			culture_cells[i] = 0;
 			culture[i] *= 0.95f; // Reduce 5%
-			if (culture[i] > current_max_food)
+			if (culture_cells[i] > 0)
+			{
+				culture[i] = 0.0f;
+				culture_cells[i] = 0;
+			}
+			else if (culture[i] > current_max_food)
+			{
 				current_max_food = culture[i];
+			}
 		}
 		update_time(time4_8);
 
 		/* 4.9. Statistics */
 		update_time(time4_9);
 		// Reductions:
-		int max_age_root, step_new_cells_root, step_dead_cells_root;
 		float max_food;
-		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		int sum_stats[3] = { step_new_cells, step_dead_cells, num_cells_alive };
+		int global_sum_stats[3];
+
+		MPI_Allreduce(sum_stats, global_sum_stats, 3, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
-		MPI_Allreduce(&num_cells_alive, &total_cells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		current_max_food = max_food;
+		total_cells = global_sum_stats[2];
 		if (rank == 0)
 		{
-			sim_stat.history_max_age = max_age_root;
 			// Statistics: Max food
 			if (current_max_food > sim_stat.history_max_food)
 				sim_stat.history_max_food = current_max_food;
 			// Statistics: Max new cells per step
-			sim_stat.history_total_cells += step_new_cells_root;
-			if (step_new_cells_root > sim_stat.history_max_new_cells)
-				sim_stat.history_max_new_cells = step_new_cells_root;
+			sim_stat.history_total_cells += global_sum_stats[0];
+			if (global_sum_stats[0] > sim_stat.history_max_new_cells)
+				sim_stat.history_max_new_cells = global_sum_stats[0];
 			// Statistics: Accumulated dead and Max dead cells per step
-			sim_stat.history_dead_cells += step_dead_cells_root;
-			if (step_dead_cells_root > sim_stat.history_max_dead_cells)
-				sim_stat.history_max_dead_cells = step_dead_cells_root;
+			sim_stat.history_dead_cells += global_sum_stats[1];
+			if (global_sum_stats[1] > sim_stat.history_max_dead_cells)
+				sim_stat.history_max_dead_cells = global_sum_stats[1];
 			// Statistics: Max alive cells per step
 			if (total_cells > sim_stat.history_max_alive_cells)
 				sim_stat.history_max_alive_cells = total_cells;
@@ -970,12 +964,16 @@ int main(int argc, char *argv[])
 #endif // DEBUG
 	}
 
+	// Last reduction (age):
+	int max_age_root;
+	MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+	sim_stat.history_max_age = max_age_root;
+
 	num_cells_alive = total_cells;
 
 	// Let's not be bad...
 	free(new_cells);
 	free(cells_moved_to);
-	free(rand4_1);
 
 #ifndef CP_TABLON
 	if (rank == 0)
@@ -987,7 +985,6 @@ int main(int argc, char *argv[])
 		printf("\t4.3 - %lf (max: %lf)\n", sum_time4_3, max_time4_3);
 		printf("\t4.X - %lf (max: %lf)\n", sum_time4_X, max_time4_X);
 		printf("\t4.4 - %lf (max: %lf)\n", sum_time4_4, max_time4_4);
-		printf("\t4.5 - %lf (max: %lf)\n", sum_time4_5, max_time4_5);
 		printf("\t4.7 - %lf (max: %lf)\n", sum_time4_7, max_time4_7);
 		printf("\t4.8 - %lf (max: %lf)\n", sum_time4_8, max_time4_8);
 		printf("\t4.9 - %lf (max: %lf)\n", sum_time4_9, max_time4_9);
