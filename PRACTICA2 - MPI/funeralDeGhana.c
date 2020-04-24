@@ -441,7 +441,7 @@ int main(int argc, char *argv[])
 	int remainder = (rows * columns) % nprocs; // Remaining unasigned positions.
 	int my_size = fraction + (rank < remainder);
 
-	request = (MPI_Request *)malloc(sizeof(MPI_Request) * (size_t)nprocs);
+	request = (MPI_Request *)malloc(sizeof(MPI_Request) * (size_t)max(3, nprocs));
 
 	/*
 	 * Beginning for each section.
@@ -938,9 +938,9 @@ int main(int argc, char *argv[])
 		// Reductions:
 		int max_age_root, step_new_cells_root, step_dead_cells_root;
 		float max_food;
-		MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		MPI_Reduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		MPI_Ireduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD, &request[0]);
+		MPI_Ireduce(&step_new_cells, &step_new_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD, &request[1]);
+		MPI_Ireduce(&step_dead_cells, &step_dead_cells_root, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD, &request[2]);
 		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
 		MPI_Allreduce(&num_cells_alive, &total_cells, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		current_max_food = max_food;
