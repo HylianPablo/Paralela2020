@@ -75,28 +75,28 @@ void cell_mutation(Cell *cell)
 	*/
 	int mutation_type = (int)(4 * erand48(cell->random_seq));
 	/* 2. Select the amount of mutation (up to 50%) */
-	float mutation_percentage = (float)(0.5 * erand48(cell->random_seq));
+	float mutation_percenTAGe = (float)(0.5 * erand48(cell->random_seq));
 	/* 3. Apply the mutation */
 	float mutation_value;
 	switch (mutation_type)
 	{
 	case 0:
-		mutation_value = cell->choose_mov[1] * mutation_percentage;
+		mutation_value = cell->choose_mov[1] * mutation_percenTAGe;
 		cell->choose_mov[1] -= mutation_value;
 		cell->choose_mov[0] += mutation_value;
 		break;
 	case 1:
-		mutation_value = cell->choose_mov[0] * mutation_percentage;
+		mutation_value = cell->choose_mov[0] * mutation_percenTAGe;
 		cell->choose_mov[0] -= mutation_value;
 		cell->choose_mov[1] += mutation_value;
 		break;
 	case 2:
-		mutation_value = cell->choose_mov[2] * mutation_percentage;
+		mutation_value = cell->choose_mov[2] * mutation_percenTAGe;
 		cell->choose_mov[2] -= mutation_value;
 		cell->choose_mov[1] += mutation_value;
 		break;
 	case 3:
-		mutation_value = cell->choose_mov[1] * mutation_percentage;
+		mutation_value = cell->choose_mov[1] * mutation_percenTAGe;
 		cell->choose_mov[1] -= mutation_value;
 		cell->choose_mov[2] += mutation_value;
 		break;
@@ -427,9 +427,8 @@ int main(int argc, char *argv[])
 	 */
 	int nprocs; // Number of processes available.
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-	MPI_Status stat;
-	MPI_Request request;
-	int tag = 1000;
+	#define TAG 1000
+	MPI_Request *request;
 
 	/*
 	 * Matrix division.
@@ -441,6 +440,8 @@ int main(int argc, char *argv[])
 	int fraction = ((long)rows * (long)columns)/nprocs; // Size of matrix for each process.
 	int remainder = (rows * columns) % nprocs; // Remaining unasigned positions.
 	int my_size = fraction + (rank < remainder);
+
+	request = (MPI_Request *)malloc(sizeof(MPI_Request) * (size_t)nprocs);
 
 	/*
 	 * Beginning for each section.
@@ -804,7 +805,7 @@ int main(int argc, char *argv[])
 				{
 					if (cells_moved_to[j] > 0)
 					{
-						MPI_Send(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, tag, MPI_COMM_WORLD);
+						MPI_Isend(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, TAG, MPI_COMM_WORLD, &request[i]);
 						free(cells_to_send[j]);
 					}
 				}
@@ -813,11 +814,10 @@ int main(int argc, char *argv[])
 			}
 			else if (cells_moved_from[i] > 0)
 			{
-				MPI_Recv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, tag, MPI_COMM_WORLD, &stat);
+				MPI_Irecv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, TAG, MPI_COMM_WORLD, &request[i]);
 				cells_received += cells_moved_from[i];
 			}
 		}
-		free(cells_moved_from);
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		if (cells_received > 0)
@@ -831,12 +831,20 @@ int main(int argc, char *argv[])
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
 
-			for (j = 0; j < cells_received; j++)
+			for (i = 0; i < nprocs; i++)
 			{
-				cells[free_position + j] = mailbox[j];
-				accessMatSec(culture_cells, mailbox[j].pos_row, mailbox[j].pos_col) += 1;
+				if (cells_moved_from[i] > 0)
+				{
+					MPI_Wait(&request[i], MPI_STATUS_IGNORE);
+				}
+			}
+			for (i = 0; i < cells_received; i++)
+			{
+				cells[free_position + i] = mailbox[i];
+				accessMatSec(culture_cells, mailbox[i].pos_row, mailbox[i].pos_col) += 1;
 			}
 		}
+		free(cells_moved_from);
 		free(mailbox);
 		update_time(time4_X);
 
@@ -906,8 +914,8 @@ int main(int argc, char *argv[])
 		}
 		if (step_new_cells > 0)
 		{
-			for (j = 0; j < step_new_cells; j++)
-				cells[num_cells + j] = new_cells[j];
+			for (i = 0; i < step_new_cells; i++)
+				cells[num_cells + i] = new_cells[i];
 			num_cells += step_new_cells;
 		}
 		num_cells = num_cells_alive;
@@ -939,22 +947,21 @@ int main(int argc, char *argv[])
 		if (rank == 0)
 		{
 			sim_stat.history_max_age = max_age_root;
+			// Statistics: Max food
+			if (current_max_food > sim_stat.history_max_food)
+				sim_stat.history_max_food = current_max_food;
+			// Statistics: Max new cells per step
+			sim_stat.history_total_cells += step_new_cells_root;
+			if (step_new_cells_root > sim_stat.history_max_new_cells)
+				sim_stat.history_max_new_cells = step_new_cells_root;
+			// Statistics: Accumulated dead and Max dead cells per step
+			sim_stat.history_dead_cells += step_dead_cells_root;
+			if (step_dead_cells_root > sim_stat.history_max_dead_cells)
+				sim_stat.history_max_dead_cells = step_dead_cells_root;
+			// Statistics: Max alive cells per step
+			if (total_cells > sim_stat.history_max_alive_cells)
+				sim_stat.history_max_alive_cells = total_cells;
 		}
-
-		// Statistics: Max food
-		if (current_max_food > sim_stat.history_max_food)
-			sim_stat.history_max_food = current_max_food;
-		// Statistics: Max new cells per step
-		sim_stat.history_total_cells += step_new_cells_root;
-		if (step_new_cells_root > sim_stat.history_max_new_cells)
-			sim_stat.history_max_new_cells = step_new_cells_root;
-		// Statistics: Accumulated dead and Max dead cells per step
-		sim_stat.history_dead_cells += step_dead_cells_root;
-		if (step_dead_cells_root > sim_stat.history_max_dead_cells)
-			sim_stat.history_max_dead_cells = step_dead_cells_root;
-		// Statistics: Max alive cells per step
-		if (total_cells > sim_stat.history_max_alive_cells)
-			sim_stat.history_max_alive_cells = total_cells;
 		update_time(time4_9);
 
 #ifdef DEBUG
