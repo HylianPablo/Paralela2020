@@ -437,7 +437,6 @@ int main(int argc, char *argv[])
 	int nprocs; // Number of processes available.
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	#define TAG 1000
-	MPI_Request request[2][nprocs];
 
 	/*
 	 * Matrix division.
@@ -701,14 +700,10 @@ int main(int argc, char *argv[])
 
 		/* 4.3. Cell movements */
 		update_time(time4_3);
-		/*for (i = 0; i < nprocs; i++)
+		for (i = 0; i < nprocs; i++)
 		{
-			if (cells_moved_to[i] > 0)
-			{
-				MPI_Wait(&request[0][i], MPI_STATUS_IGNORE);
-				cells_moved_to[i] = 0;
-			}
-		}*/
+			cells_moved_to[i] = 0;
+		}
 
 		int step_dead_cells = 0;
 		int max_age = 0;
@@ -789,6 +784,7 @@ int main(int argc, char *argv[])
 		MPI_Alltoall(cells_moved_to, 1, MPI_INT, cells_moved_from, 1, MPI_INT, MPI_COMM_WORLD);
 
 		// Fill counts and displacements for MPI_Alltoallv:
+		index[0] = 0;
 		for (i = 1; i < nprocs; i++)
 		{
 			index[i] = 0;
@@ -805,7 +801,8 @@ int main(int argc, char *argv[])
 		{
 			if (cells[i].alive && !mine(cells[i].pos_row, cells[i].pos_col))
 			{
-				cells_to_send[offsets_to[i] + index[i]++] = cells[i];
+				int section = section(cells[i]);
+				cells_to_send[offsets_to[section] + index[section]++] = cells[i];
 				cells[i].alive = false;
 			}
 		}
@@ -826,27 +823,9 @@ int main(int argc, char *argv[])
 		}
 		num_cells_alive = free_position;
 
+
 		MPI_Alltoallv(cells_to_send, cells_moved_to, offsets_to, MPI_CellExt, mailbox, cells_moved_from, offsets_from, MPI_CellExt, MPI_COMM_WORLD);
 		free(cells_to_send);
-		/*for (i = 0; i < nprocs; i++)
-		{
-			if (rank == i)
-			{
-				for (j = 0; j < nprocs; j++)
-				{
-					if (cells_moved_to[j] > 0)
-					{
-						MPI_Isend(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, TAG, MPI_COMM_WORLD, &request[0][j]);
-						free(cells_to_send[j]);
-					}
-				}
-			}
-			else if (cells_moved_from[i] > 0)
-			{
-				MPI_Irecv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, TAG, MPI_COMM_WORLD, &request[1][i]);
-				cells_received += cells_moved_from[i];
-			}
-		}*/
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		if (cells_received > 0)
@@ -859,14 +838,6 @@ int main(int argc, char *argv[])
 				cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells_alive);
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
-
-			/*for (i = 0; i < nprocs; i++)
-			{
-				if (cells_moved_from[i] > 0)
-				{
-					MPI_Wait(&request[1][i], MPI_STATUS_IGNORE);
-				}
-			}*/
 
 			for (i = 0; i < cells_received; i++)
 			{
