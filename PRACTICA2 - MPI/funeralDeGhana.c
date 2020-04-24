@@ -437,6 +437,7 @@ int main(int argc, char *argv[])
 	int nprocs; // Number of processes available.
 	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 	#define TAG 1000
+	MPI_Request request[2][nprocs];
 
 	/*
 	 * Matrix division.
@@ -557,9 +558,9 @@ int main(int argc, char *argv[])
 	// Number of cells moved to each process each iteration:
 	int *cells_moved_to = (int *)calloc(sizeof(int), (size_t)nprocs);
 	// Number of cells received from each process each iteration:
-	int *cells_moved_from = (int *)malloc(sizeof(int) * (size_t)nprocs);	
+	int cells_moved_from[nprocs];
 	// Cells to send matrix:
-	Cell **cells_to_send = (Cell **)malloc(sizeof(Cell *) * (size_t)nprocs);
+	Cell *cells_to_send[nprocs];
 
 	// Memory errors:
 #ifndef CP_TABLON
@@ -627,7 +628,7 @@ int main(int argc, char *argv[])
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
-	double rand4_1[3 * max_sources];
+	double *rand4_1 = malloc(sizeof(double) * (size_t)(3 * max_sources));
 
 	// num_cells helpers:
 	int num_cells_alive = num_cells; // Check the change in num_cells since las iteration.	// TODO: maybe delete?
@@ -708,6 +709,15 @@ int main(int argc, char *argv[])
 
 		/* 4.3. Cell movements */
 		update_time(time4_3);
+		for (i = 0; i < nprocs; i++)
+		{
+			if (cells_moved_to[i] > 0)
+			{
+				MPI_Wait(&request[0][i], MPI_STATUS_IGNORE);
+				cells_moved_to[i] = 0;
+			}
+		}
+
 		int step_dead_cells = 0;
 		int max_age = 0;
 		// 4.3.0
@@ -838,15 +848,14 @@ int main(int argc, char *argv[])
 				{
 					if (cells_moved_to[j] > 0)
 					{
-						MPI_Send(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, TAG, MPI_COMM_WORLD);
-						cells_moved_to[j] = 0;
+						MPI_Isend(cells_to_send[j], cells_moved_to[j], MPI_CellExt, j, TAG, MPI_COMM_WORLD, &request[0][j]);
 						free(cells_to_send[j]);
 					}
 				}
 			}
 			else if (cells_moved_from[i] > 0)
 			{
-				MPI_Recv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				MPI_Irecv(&mailbox[cells_received], cells_moved_from[i], MPI_CellExt, i, TAG, MPI_COMM_WORLD, &request[1][i]);
 				cells_received += cells_moved_from[i];
 			}
 		}
@@ -862,6 +871,14 @@ int main(int argc, char *argv[])
 				cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells_alive);
 				cell_destiny = (int *)realloc(cell_destiny, sizeof(int) * num_cells_alive);
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
+			}
+
+			for (i = 0; i < nprocs; i++)
+			{
+				if (cells_moved_from[i] > 0)
+				{
+					MPI_Wait(&request[1][i], MPI_STATUS_IGNORE);
+				}
 			}
 
 			for (i = 0; i < cells_received; i++)
@@ -999,10 +1016,10 @@ int main(int argc, char *argv[])
 	num_cells_alive = total_cells;
 
 	// Let's not be bad...
-	free(cell_destiny);
-	free(cells_moved_to);
-	free(cells_moved_from);
 	free(new_cells);
+	free(cells_moved_to);
+	free(cell_destiny);
+	free(rand4_1);
 
 #ifndef CP_TABLON
 	if (rank == 0)
