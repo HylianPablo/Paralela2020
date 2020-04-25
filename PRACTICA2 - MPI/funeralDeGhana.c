@@ -500,7 +500,6 @@ int main(int argc, char *argv[])
 
 	// 3.2
 	update_time(time3_2);
-	num_cells = 0;
 	for (i = 0; i < total_cells; i++)
 	{
 		// Initial age: Between 1 and 20
@@ -514,8 +513,6 @@ int main(int argc, char *argv[])
 		// Calculate which section this cells belongs to:
 		if (rank == section(cells[i]))
 		{
-			num_cells++;
-
 			cells[i].alive = true;
 			// Movement direction: Unity vector in a random direction
 			cell_new_direction(&cells[i]);
@@ -532,16 +529,16 @@ int main(int argc, char *argv[])
 	}
 
 	// Delete non-belonging cells (4.6):
-	int free_position = 0;
+	num_cells = 0;
 	for (i = 0; i < total_cells; i++)
 	{
 		if (cells[i].alive)
 		{
-			if (free_position != i)
+			if (num_cells != i)
 			{
-				cells[free_position] = cells[i];
+				cells[num_cells] = cells[i];
 			}
-			free_position++;
+			num_cells++;
 		}
 	}
 	cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells);
@@ -616,10 +613,9 @@ int main(int argc, char *argv[])
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
-	double rand4_1[3 * max_sources];
+	float rand4_1[3 * max_sources];
 
 	// num_cells helpers:
-	int num_cells_alive = num_cells; // Check the change in num_cells since las iteration.	// TODO: maybe delete?
 	int num_max_cells = num_cells;	 // For realloc-ing memory.
 
 	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
@@ -652,43 +648,30 @@ int main(int argc, char *argv[])
 		/* 4.1. Spreading new food */
 		update_time(time4_1);
 		// Across the whole culture
+		j = 0;
 		for (i = 0; i < num_new_sources; i++)
 		{
-			rand4_1[3 * i] = erand48(food_random_seq);
-			rand4_1[3 * i + 1] = erand48(food_random_seq);
-			rand4_1[3 * i + 2] = erand48(food_random_seq);
+			rand4_1[3 * j] = (int)(rows * erand48(food_random_seq));
+			rand4_1[3 * j + 1] = (int)(columns * erand48(food_random_seq));
+			rand4_1[3 * j + 2] = food_level * erand48(food_random_seq);
+			if (mine(rand4_1[3 * j], rand4_1[3 * j + 1])) j++;
 		}
+		for (i = 0; i < j; i++)
+			accessMatSec(culture, rand4_1[3 * i], rand4_1[3 * i + 1]) += rand4_1[3 * i + 2];
 
-		for (i = 0; i < num_new_sources; i++)
-		{
-			int row = (int)(rows * rand4_1[3 * i]);
-			int col = (int)(columns * rand4_1[3 * i + 1]);
-			if (mine(row, col))
-			{
-				float food = (float)(food_level * rand4_1[3 * i + 2]);
-				accessMatSec(culture, row, col) += food;
-			}
-		}
 		// In the special food spot
 		if (food_spot_active)
 		{
+			j = 0;
 			for (i = 0; i < num_new_sources_spot; i++)
 			{
-				rand4_1[3 * i] = erand48(food_spot_random_seq);
-				rand4_1[3 * i + 1] = erand48(food_spot_random_seq);
-				rand4_1[3 * i + 2] = erand48(food_spot_random_seq);
+				rand4_1[3 * j] = (int)(food_spot_row + food_spot_size_rows * erand48(food_spot_random_seq));
+				rand4_1[3 * j + 1] = (int)(food_spot_col + food_spot_size_cols * erand48(food_spot_random_seq));
+				rand4_1[3 * j + 2] = food_spot_level * erand48(food_spot_random_seq);
+				if (mine(rand4_1[3 * j], rand4_1[3 * j + 1])) j++;
 			}
-
-			for (i = 0; i < num_new_sources_spot; i++)
-			{
-				int row = food_spot_row + (int)(food_spot_size_rows * rand4_1[3 * i]);
-				int col = food_spot_col + (int)(food_spot_size_cols * rand4_1[3 * i + 1]);
-				if (mine(row, col))
-				{
-					float food = (float)(food_spot_level * rand4_1[3 * i + 2]);
-					accessMatSec(culture, row, col) += food;
-				}
-			}
+			for (i = 0; i < j; i++)
+				accessMatSec(culture, rand4_1[3 * i], rand4_1[3 * i + 1]) += rand4_1[3 * i + 2];
 		}
 		update_time(time4_1);
 
@@ -803,19 +786,18 @@ int main(int argc, char *argv[])
 
 		/* 4.6. Clean dead cells from the original list */
 		// 4.6.1. Move alive cells to the left to substitute dead cells
-		free_position = 0;
+		int num_cells_alive = 0;
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
 			{
-				if (free_position != i)
+				if (num_cells_alive != i)
 				{
-					cells[free_position] = cells[i];
+					cells[num_cells_alive] = cells[i];
 				}
-				free_position++;
+				num_cells_alive++;
 			}
 		}
-		num_cells_alive = free_position;
 
 
 		MPI_Alltoallv(cells_to_send, cells_moved_to, offsets_to, MPI_CellExt, mailbox, cells_moved_from, offsets_from, MPI_CellExt, MPI_COMM_WORLD);
@@ -833,9 +815,9 @@ int main(int argc, char *argv[])
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
 
-			for (i = 0; i < cells_received; i++)
+			for (i = 1; i <= cells_received; i++)
 			{
-				cells[free_position + i] = mailbox[i];
+				cells[num_cells_alive - i] = mailbox[i];
 				accessMatSec(culture_cells, mailbox[i].pos_row, mailbox[i].pos_col) += 1;
 			}
 		}
@@ -884,12 +866,9 @@ int main(int argc, char *argv[])
 				cell_mutation(&new_cells[step_new_cells - 1]);
 			}
 		} // End cell actions
-		free_position = num_cells_alive;
+		num_cells = num_cells_alive;
 		num_cells_alive += step_new_cells;
 		update_time(time4_4);
-
-		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		num_cells = free_position;
 
 		/* 4.7. Join cell lists: Old and new cells list */
 		update_time(time4_7);
@@ -931,13 +910,13 @@ int main(int argc, char *argv[])
 		update_time(time4_9);
 		// Reductions:
 		float max_food;
-		int sum_stats[3] = { step_new_cells, step_dead_cells, num_cells_alive };
-		int global_sum_stats[3];
+		int sum_stats[2] = { step_new_cells, step_dead_cells };
+		int global_sum_stats[2];
 
-		MPI_Allreduce(sum_stats, global_sum_stats, 3, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+		MPI_Allreduce(sum_stats, global_sum_stats, 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
 		current_max_food = max_food;
-		total_cells = global_sum_stats[2];
+		total_cells += (global_sum_stats[0] - global_sum_stats[1]);
 		if (rank == 0)
 		{
 			// Statistics: Max food
