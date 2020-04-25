@@ -692,7 +692,9 @@ int main(int argc, char *argv[])
 
 	// First 10 iterations are different:
 	// (Some conditions are never met.)
-	for (iter = 0; iter < 10 && current_max_food <= max_food; iter++)
+	int first_iterations = min(10, max_iter);
+	// (There is a leaderboard test with less than 10 iterations lol.)
+	for (iter = 0; iter < first_iterations && current_max_food <= max_food; iter++)
 	{
 		/* 4.1. Spreading new food */
 		// Across the whole culture
@@ -891,6 +893,7 @@ int main(int argc, char *argv[])
 #endif // DEBUG
 	}
 
+	
 	for (; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
 	{
 #ifndef CP_TABLON
