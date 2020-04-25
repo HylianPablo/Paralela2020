@@ -428,7 +428,8 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 * Choose faster CPU to execute:
+	 * Choose faster CPU to execute/balance load:
+	 * (In case the connection is slow.)
 	 *
 	 */
 	bool chosen = true;
@@ -653,7 +654,208 @@ int main(int argc, char *argv[])
 	int num_cells_alive;
 	int num_max_cells = num_cells;	 // For realloc-ing memory.
 
-	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
+	// First 10 iterations are different:
+	// (Some conditions are never met.)
+	for (iter = 0; iter < 10 && current_max_food <= max_food; iter++)
+	{
+		/* 4.1. Spreading new food */
+		// Across the whole culture
+		j = 0;
+		for (i = 0; i < num_new_sources; i++)
+		{
+			rand4_1[3 * j] = (int)(rows * erand48(food_random_seq));
+			rand4_1[3 * j + 1] = (int)(columns * erand48(food_random_seq));
+			rand4_1[3 * j + 2] = food_level * erand48(food_random_seq);
+			if (mine(rand4_1[3 * j], rand4_1[3 * j + 1])) j++;
+		}
+		for (i = 0; i < j; i++)
+			accessMatSec(culture, rand4_1[3 * i], rand4_1[3 * i + 1]) += rand4_1[3 * i + 2];
+
+		// In the special food spot
+		if (food_spot_active)
+		{
+			j = 0;
+			for (i = 0; i < num_new_sources_spot; i++)
+			{
+				rand4_1[3 * j] = (int)(food_spot_row + food_spot_size_rows * erand48(food_spot_random_seq));
+				rand4_1[3 * j + 1] = (int)(food_spot_col + food_spot_size_cols * erand48(food_spot_random_seq));
+				rand4_1[3 * j + 2] = food_spot_level * erand48(food_spot_random_seq);
+				if (mine(rand4_1[3 * j], rand4_1[3 * j + 1])) j++;
+			}
+			for (i = 0; i < j; i++)
+				accessMatSec(culture, rand4_1[3 * i], rand4_1[3 * i + 1]) += rand4_1[3 * i + 2];
+		}
+
+		/* 4.3. Cell movements */
+		for (i = 0; i < nprocs; i++)
+		{
+			cells_moved_to[i] = 0;
+		}
+		// 4.3.0
+		for (i = 0; i < num_cells; i++)
+		{
+			cells[i].age++;
+			// Statistics: Max age of a cell in the simulation history
+			if (cells[i].age > sim_stat.history_max_age)
+				sim_stat.history_max_age = cells[i].age;
+
+			// Consume energy to move
+			cells[i].storage -= 1.0f;
+
+			/* 4.3.2. Choose movement direction */
+			float prob = (float)erand48(cells[i].random_seq);
+			if (prob < cells[i].choose_mov[0])
+			{
+				// Turn left (90 degrees)
+				float tmp = cells[i].mov_col;
+				cells[i].mov_col = cells[i].mov_row;
+				cells[i].mov_row = -tmp;
+			}
+			else if (prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1])
+			{
+				// Turn right (90 degrees)
+				float tmp = cells[i].mov_row;
+				cells[i].mov_row = cells[i].mov_col;
+				cells[i].mov_col = -tmp;
+			}
+			// else do not change the direction
+
+			/* 4.3.3. Update position moving in the choosen direction */
+			cells[i].pos_row += cells[i].mov_row;
+			cells[i].pos_col += cells[i].mov_col;
+
+			// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+			if (cells[i].pos_row < 0)
+				cells[i].pos_row += rows;
+			if (cells[i].pos_row >= rows) // These can't be elsed.
+				cells[i].pos_row -= rows;
+			if (cells[i].pos_col < 0)
+				cells[i].pos_col += columns;
+			if (cells[i].pos_col >= columns) // These can't be elsed.
+				cells[i].pos_col -= columns;
+
+			/* 4.3.4. Annotate that there is one more cell in this culture position */
+			if (mine(cells[i].pos_row, cells[i].pos_col))
+			{
+				accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
+			}
+			else
+			{
+				int cell_section = section(cells[i]);
+				cells_moved_to[cell_section]++;
+			}
+		} // End cell movements
+
+		// Number of cells received from each process:
+		MPI_Alltoall(cells_moved_to, 1, MPI_INT, cells_moved_from, 1, MPI_INT, all_chosen);
+
+		// Fill counts and displacements for MPI_Alltoallv:
+		index[0] = 0;
+		for (i = 1; i < nprocs; i++)
+		{
+			index[i] = 0;
+			offsets_to[i] = offsets_to[i - 1] + cells_moved_to[i - 1];
+			offsets_from[i] = offsets_from[i - 1] + cells_moved_from[i - 1];
+		}
+		// Allocate memory for send and receive lists:
+		int cells_received = offsets_from[i - 1] + cells_moved_from[i - 1];
+		Cell *cells_to_send = (Cell *)malloc(sizeof(Cell) * (size_t)(offsets_to[i - 1] + cells_moved_to[i - 1]));
+		Cell *mailbox = (Cell *)malloc(sizeof(Cell) * (size_t)cells_received);
+
+		// Fill cells to send matrix:
+		for (i = 0; i < num_cells; i++)
+		{
+			if (cells[i].alive && !mine(cells[i].pos_row, cells[i].pos_col))
+			{
+				int section = section(cells[i]);
+				cells_to_send[offsets_to[section] + index[section]++] = cells[i];
+				cells[i].alive = false;
+			}
+		}
+
+		/* 4.6. Clean dead cells from the original list */
+		// 4.6.1. Move alive cells to the left to substitute dead cells
+		num_cells_alive = 0;
+		for (i = 0; i < num_cells; i++)
+		{
+			if (cells[i].alive)
+			{
+				if (num_cells_alive != i)
+				{
+					cells[num_cells_alive] = cells[i];
+				}
+				num_cells_alive++;
+			}
+		}
+
+		MPI_Alltoallv(cells_to_send, cells_moved_to, offsets_to, MPI_CellExt, mailbox, cells_moved_from, offsets_from, MPI_CellExt, all_chosen);
+		free(cells_to_send);
+
+		/* 4.7. Join cell lists: Old and new cells list */
+		if (cells_received > 0)
+		{
+			num_cells_alive += cells_received;
+			// Reallocate memory, if the list of cells is the biggest one so far:
+			if (num_cells_alive > num_max_cells)
+			{
+				num_max_cells = num_cells_alive;
+				cells = (Cell *)realloc(cells, sizeof(Cell) * num_cells_alive);
+				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
+			}
+
+			for (i = 0; i < cells_received; i++)
+			{
+				cells[num_cells_alive - i - 1] = mailbox[i];
+				accessMatSec(culture_cells, mailbox[i].pos_row, mailbox[i].pos_col) += 1;
+			}
+		}
+		free(mailbox);
+
+		/* 4.4. Cell actions */
+		for (i = 0; i < num_cells_alive; i++)
+		{
+			cells[i].storage += accessMatSec(culture, cells[i].pos_row, cells[i].pos_col) / accessMatSec(culture_cells, cells[i].pos_row, cells[i].pos_col);
+
+		} // End cell actions
+		num_cells = num_cells_alive;
+
+		/* 4.8. Decrease non - harvested food */
+		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
+		/* 4.5. Clean ancillary data structures */
+		for (i = 0; i < my_size; i++)
+		{
+			culture[i] *= 0.95f; // Reduce 5%
+			if (culture_cells[i] > 0)
+			{
+				culture[i] = 0.0f;
+				culture_cells[i] = 0;
+			}
+			else if (culture[i] > current_max_food)
+			{
+				current_max_food = culture[i];
+			}
+		}
+
+		/* 4.9. Statistics */
+		// Food reduction:
+		float max_food;
+		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, all_chosen);
+		current_max_food = max_food;
+		if (rank == 0)
+		{
+			// Statistics: Max food
+			if (current_max_food > sim_stat.history_max_food)
+				sim_stat.history_max_food = current_max_food;
+		}
+
+#ifdef DEBUG
+		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
+		if (rank == 0)
+			print_status(iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
+#endif // DEBUG
+	}
+
+	for (; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
 	{
 #ifndef CP_TABLON
 		sum_time4_1 += time4_1;
