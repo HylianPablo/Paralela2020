@@ -393,7 +393,7 @@ int main(int argc, char *argv[])
 #ifndef CP_TABLON
 #define update_time(timer)          \
 	{                               \
-		MPI_Barrier(MPI_COMM_WORLD);\
+		MPI_Barrier(all_chosen);	\
 		timer = MPI_Wtime() - timer;\
 	}
 #else
@@ -427,13 +427,47 @@ int main(int argc, char *argv[])
 	double max_time4_9 = 0.0;
 #endif
 
+	/*
+	 * Choose faster CPU to execute:
+	 *
+	 */
+	bool chosen = true;
+#ifdef CP_TABLON
+	int size;
+	char name[MPI_MAX_PROCESSOR_NAME];
+
+	MPI_Get_processor_name(name, &size);
+
+	if (!strcmp(name, "heracles")) chosen = false;
+#endif
+
+	MPI_Comm all_chosen;
+	MPI_Comm_split(MPI_COMM_WORLD, chosen ? 1 : MPI_UNDEFINED, 0, &all_chosen);
+
+	/*
+	 * Terminate non-chosen processes:
+	 *
+	 */
+	if (!chosen)
+	{
+		// Wait for all the other processes:
+		MPI_Barrier(MPI_COMM_WORLD);
+
+		MPI_Finalize();
+		return 0;
+	}
+
+	// Recalculate rank:
+	MPI_Comm_rank(all_chosen, &rank);
+
 	/* 
 	 * MPI constants initialization.
 	 *
 	 */
 	int nprocs; // Number of processes available.
-	MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+	MPI_Comm_size(all_chosen, &nprocs);
 	#define TAG 1000
+	MPI_Request request;
 
 	/*
 	 * Matrix division.
@@ -616,6 +650,7 @@ int main(int argc, char *argv[])
 	float rand4_1[3 * max_sources];
 
 	// num_cells helpers:
+	int num_cells_alive;
 	int num_max_cells = num_cells;	 // For realloc-ing memory.
 
 	for (iter = 0; iter < max_iter && current_max_food <= max_food && total_cells > 0; iter++)
@@ -683,7 +718,6 @@ int main(int argc, char *argv[])
 		}
 
 		int step_dead_cells = 0;
-		int max_age = 0;
 		// 4.3.0
 		for (i = 0; i < num_cells; i++)
 		{
@@ -758,7 +792,7 @@ int main(int argc, char *argv[])
 		/* 4.X - Cell delivery */
 		update_time(time4_X);
 		// Number of cells received from each process:
-		MPI_Alltoall(cells_moved_to, 1, MPI_INT, cells_moved_from, 1, MPI_INT, MPI_COMM_WORLD);
+		MPI_Alltoall(cells_moved_to, 1, MPI_INT, cells_moved_from, 1, MPI_INT, all_chosen);
 
 		// Fill counts and displacements for MPI_Alltoallv:
 		index[0] = 0;
@@ -786,7 +820,7 @@ int main(int argc, char *argv[])
 
 		/* 4.6. Clean dead cells from the original list */
 		// 4.6.1. Move alive cells to the left to substitute dead cells
-		int num_cells_alive = 0;
+		num_cells_alive = 0;
 		for (i = 0; i < num_cells; i++)
 		{
 			if (cells[i].alive)
@@ -800,7 +834,7 @@ int main(int argc, char *argv[])
 		}
 
 
-		MPI_Alltoallv(cells_to_send, cells_moved_to, offsets_to, MPI_CellExt, mailbox, cells_moved_from, offsets_from, MPI_CellExt, MPI_COMM_WORLD);
+		MPI_Alltoallv(cells_to_send, cells_moved_to, offsets_to, MPI_CellExt, mailbox, cells_moved_from, offsets_from, MPI_CellExt, all_chosen);
 		free(cells_to_send);
 
 		/* 4.7. Join cell lists: Old and new cells list */
@@ -815,9 +849,9 @@ int main(int argc, char *argv[])
 				new_cells = (Cell *)realloc(new_cells, sizeof(Cell) * num_cells_alive);
 			}
 
-			for (i = 1; i <= cells_received; i++)
+			for (i = 0; i < cells_received; i++)
 			{
-				cells[num_cells_alive - i] = mailbox[i];
+				cells[num_cells_alive - i - 1] = mailbox[i];
 				accessMatSec(culture_cells, mailbox[i].pos_row, mailbox[i].pos_col) += 1;
 			}
 		}
@@ -868,6 +902,13 @@ int main(int argc, char *argv[])
 		} // End cell actions
 		num_cells = num_cells_alive;
 		num_cells_alive += step_new_cells;
+
+		// Cells reductions:
+		int sum_stats[2] = { step_new_cells, step_dead_cells };
+		int global_sum_stats[2];
+
+		//MPI_Iallreduce(sum_stats, global_sum_stats, 2, MPI_INT, MPI_SUM, all_chosen, &request);	// Why this doesn't work on the leaderboard??? :C
+		MPI_Allreduce(sum_stats, global_sum_stats, 2, MPI_INT, MPI_SUM, all_chosen);
 		update_time(time4_4);
 
 		/* 4.7. Join cell lists: Old and new cells list */
@@ -908,13 +949,9 @@ int main(int argc, char *argv[])
 
 		/* 4.9. Statistics */
 		update_time(time4_9);
-		// Reductions:
+		// Food reduction:
 		float max_food;
-		int sum_stats[2] = { step_new_cells, step_dead_cells };
-		int global_sum_stats[2];
-
-		MPI_Allreduce(sum_stats, global_sum_stats, 2, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
+		MPI_Allreduce(&current_max_food, &max_food, 1, MPI_FLOAT, MPI_MAX, all_chosen);
 		current_max_food = max_food;
 		total_cells += (global_sum_stats[0] - global_sum_stats[1]);
 		if (rank == 0)
@@ -934,6 +971,7 @@ int main(int argc, char *argv[])
 			if (total_cells > sim_stat.history_max_alive_cells)
 				sim_stat.history_max_alive_cells = total_cells;
 		}
+		//MPI_Wait(&request, MPI_STATUS_IGNORE);	// Why this doesn't work on the leaderboard (part 2)??? :C
 		update_time(time4_9);
 
 #ifdef DEBUG
@@ -945,7 +983,7 @@ int main(int argc, char *argv[])
 
 	// Last reduction (age):
 	int max_age_root;
-	MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+	MPI_Reduce(&sim_stat.history_max_age, &max_age_root, 1, MPI_INT, MPI_MAX, 0, all_chosen);
 	sim_stat.history_max_age = max_age_root;
 
 	num_cells_alive = total_cells;
@@ -953,7 +991,6 @@ int main(int argc, char *argv[])
 	// Let's not be bad...
 	free(new_cells);
 	free(cells_moved_to);
-
 #ifndef CP_TABLON
 	if (rank == 0)
 	{
