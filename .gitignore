@@ -5,4 +5,5 @@
 !*/Makefile
 
 *.out
-OpenMP/x.txt
+*/x.txt
+*/x
