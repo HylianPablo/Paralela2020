@@ -384,8 +384,8 @@ int main(int argc, char *argv[]) {
 			int col = (int)(columns * erand48( food_random_seq ));
 			float food = (float)( food_level * erand48( food_random_seq ));
 			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+			printf("Food %f en %d\n", food, (int)row*columns + (int)col);
 		}
-		printf("%d\n", num_new_sources);			
 		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
@@ -396,8 +396,8 @@ int main(int argc, char *argv[]) {
 				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			}
 
-			printf("%d\n", num_new_sources);
 		}
+		printf("\n");
 
 		/* 4.2. Prepare ancillary data structures */
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */

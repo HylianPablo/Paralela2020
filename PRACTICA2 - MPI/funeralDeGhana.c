@@ -542,7 +542,6 @@ int main(int argc, char *argv[])
 		food_spots[2] = 0.0f;
 
 		MPI_Irecv(&simulating, 1, MPI_C_BOOL, 0, TAG, universe, &food_generator);
-		bool a = true;
 		while (simulating)
 		{
 			/* 4.1. Spreading new food */
@@ -562,42 +561,32 @@ int main(int argc, char *argv[])
 				int section = sectionCoords(row, col);
 
 				// Move elements in food_spots correctly:
-				for (j = section+1; j < (nprocs-1); j++)
+				for (j = section + 1; j < nprocs; j++)
 				{
-					float tmp_food = food_spots[food_offsets[j]];
-					float tmp_row = food_spots[food_offsets[j] + 1];
-					float tmp_col = food_spots[food_offsets[j] + 2];
-					food_spots[food_offsets[j]] = food;
-					food_spots[food_offsets[j] + 1] = row;
-					food_spots[food_offsets[j] + 2] = col;
+					int offset = food_offsets[j - 1] + number_food_spots[j - 1];
+					float tmp_food = food_spots[offset];
+					float tmp_row = food_spots[offset + 1];
+					float tmp_col = food_spots[offset + 2];
+
+					int k = 0;
+					food_spots[offset] = food;
+					food_spots[offset + 1] = row;
+					food_spots[offset + 2] = col;
 					food = tmp_food;
+
 					row = tmp_row;
 					col = tmp_col;
-
-					if (a) printf("Food (%f, %f, %f) en %d\n", food_spots[food_offsets[j]], food_spots[food_offsets[j] + 1], food_spots[food_offsets[j] + 2], food_offsets[j]);
-					food_offsets[j] += 3;
+					food_offsets[j] = offset + 3;
 				}
-				food_spots[food_offsets[j] + number_food_spots[j]] = food;
-				food_spots[food_offsets[j] + number_food_spots[j] + 1] = row;
-				food_spots[food_offsets[j] + number_food_spots[j] + 2] = col;
-				food_offsets[j] += 3;
+				int offset = food_offsets[j - 1] + number_food_spots[j - 1];
+				food_spots[offset] = food;
+				food_spots[offset + 1] = row;
+				food_spots[offset + 2] = col;
+
+				food_offsets[j] = offset + 3;
 
 				number_food_spots[section] += 3;
-
-				if (a)
-				{
-					for (j = 0; j < nprocs; j++)
-						printf("%d ", number_food_spots[j]);
-					printf("\n");
-					for (j = 0; j < nprocs; j++)
-						printf("%d ", food_offsets[j]);
-					printf("\n");
-					for (j = 0; j <= i; j++)
-						printf("(%f, %f, %f)\n", food_spots[j], food_spots[j + 1], food_spots[j + 2]);
-					printf("\n__________________________________________________________\n\n");
-				}
-			}			
-			a = false;
+			}
 
 			// In the special food spot
 			if (food_spot_active)
@@ -611,23 +600,29 @@ int main(int argc, char *argv[])
 					int section = sectionCoords(row, col);
 
 					// Move elements in food_spots correctly:
-					for (j = section + 1; j < (nprocs - 1); j++)
+					for (j = section + 1; j < nprocs; j++)
 					{
-						float tmp_food = food_spots[food_offsets[j]];
-						float tmp_row = food_spots[food_offsets[j] + 1];
-						float tmp_col = food_spots[food_offsets[j] + 2];
-						food_spots[food_offsets[j]] = food;
-						food_spots[food_offsets[j] + 1] = row;
-						food_spots[food_offsets[j] + 2] = col;
-						food_offsets[j] += 3;
+						int offset = food_offsets[j - 1] + number_food_spots[j - 1];
+						float tmp_food = food_spots[offset];
+						float tmp_row = food_spots[offset + 1];
+						float tmp_col = food_spots[offset + 2];
+
+						int k = 0;
+						food_spots[offset] = food;
+						food_spots[offset + 1] = row;
+						food_spots[offset + 2] = col;
 						food = tmp_food;
-						row = (int)tmp_row;
-						col = (int)tmp_col;
+
+						row = tmp_row;
+						col = tmp_col;
+						food_offsets[j] = offset + 3;
 					}
-					food_spots[food_offsets[j] + number_food_spots[j]] = food;
-					food_spots[food_offsets[j] + number_food_spots[j] + 1] = row;
-					food_spots[food_offsets[j] + number_food_spots[j] + 2] = col;
-					food_offsets[j] += 3;
+					int offset = food_offsets[j - 1] + number_food_spots[j - 1];
+					food_spots[offset] = food;
+					food_spots[offset + 1] = row;
+					food_spots[offset + 2] = col;
+
+					food_offsets[j] = offset + 3;
 
 					number_food_spots[section] += 3;
 				}
@@ -831,7 +826,10 @@ int main(int argc, char *argv[])
 		// (There is a leaderboard test with less than 10 iterations lol.)
 
 		bool destiny = first_iterations > 0;
-		MPI_Isend(&destiny, 1, MPI_C_BOOL, nprocs - 1, TAG, universe, &food_generator);
+		if (rank == 0)
+		{
+			MPI_Isend(&destiny, 1, MPI_C_BOOL, nprocs - 1, TAG, universe, &food_generator);
+		}
 		for (iter = 0; iter < first_iterations && current_max_food <= max_food; iter++)
 		{
 			/* 4.3. Cell movements */
@@ -970,7 +968,6 @@ int main(int argc, char *argv[])
 			for (i = 0; i < food_amount; i += 3)
 			{
 				culture[(int)food[i + 1]*columns + (int)food[i + 2] - my_begin] += food[i];
-				//if (arrayPosCoords(food[i + 1], food[i + 2]) == 68) printf("%d\n", rank);
 			}
 
 			/* 4.4. Cell actions */
@@ -1012,7 +1009,9 @@ int main(int argc, char *argv[])
 
 				// Statistics: Max food
 				if (current_max_food > sim_stat.history_max_food)
+				{
 					sim_stat.history_max_food = current_max_food;
+				}
 			}
 
 #ifdef DEBUG
