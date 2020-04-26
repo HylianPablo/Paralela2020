@@ -536,6 +536,22 @@ void debuggeo(int flag, int rank){
     
     //-------------------------------------------------------------------------------------//
    
+    num_new_sources = (int)(rows * columns * food_density);
+    int num_new_sources2 = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
+    int max_comida;
+    if(num_new_sources>num_new_sources2){
+		max_comida = num_new_sources;
+	}else{
+		max_comida = num_new_sources2;
+	} 
+
+
+    float **posiciones = malloc(3*sizeof(float *));
+
+    for(i=0; i< 3; i++){
+    	posiciones[i]=malloc(max_comida*sizeof(float));
+    }
+
 	for( iter=0; iter<max_iter && current_max_food_root <= max_food && num_cells_alive_root > 0; iter++ ) {
 		//if(iter==8) printf("Mi rank: %d, Llego hasta 0\n", rank);
 		/*if(iter == 283 ){
@@ -550,45 +566,34 @@ void debuggeo(int flag, int rank){
         step_dead_cells_root = 0;
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		num_new_sources = (int)(rows * columns * food_density);
+		
 		
         //if(iter==240) printf("Rank %d entra en 240\n", rank);
         
-        //double aleatorio[num_new_sources][3];
-        float posiciones[num_new_sources][3];
-/*
-        int my_size_num_new_sources = num_new_sources/num_procs; 
-		resto = num_new_sources%num_procs;
-		int my_begin_num_new_sources ;
-		if(rank < resto ){
-			my_size_num_new_sources = my_size_num_new_sources+1;
-			my_begin_num_new_sources = my_size_num_new_sources*rank;
-		}else{
-			my_begin_num_new_sources = resto + my_size_num_new_sources*rank;
-		}
-        */
+        //double aleatorio[num_new_sources][3]
+
         //<----------------------- CON ESTO CREO QUE RULA ----------------------------------------------------REPASR ESTA COSA, PROBABLEMENTE ESTE MAL
         for(j=0; j<num_new_sources; j++){ //igual toca dividir por tema de memoria
             /*aleatorio[z][0]=erand48( food_random_seq );
             aleatorio[z][1]=erand48( food_random_seq );
             aleatorio[z][2]=erand48( food_random_seq );*/
-            posiciones[j][0] = (int)(rows * erand48( food_random_seq )); //row
-			posiciones[j][1] = (int)(columns * erand48( food_random_seq )); //col
-			posiciones[j][2] = (float)( food_level * erand48( food_random_seq )); //food
+            posiciones[0][j] = (int)(rows * erand48( food_random_seq )); //row
+			posiciones[1][j] = (int)(columns * erand48( food_random_seq )); //col
+			posiciones[2][j] = (float)( food_level * erand48( food_random_seq )); //food
             
         }
 
 		for (i=0; i<num_new_sources; i++) {
             
-			if(mine(posiciones[i][0],posiciones[i][1])){
-            	accessMat( culture, posiciones[i][0],posiciones[i][1] ) += posiciones[i][2];
+			if(mine(posiciones[0][i],posiciones[1][i])){
+            	accessMat( culture, posiciones[0][i],posiciones[1][i] ) += posiciones[2][i];
         	}
 		}
         //printf("LLEGA 5 \n");
         // In the special food spot
 		if ( food_spot_active ) {
 
-			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
+			
             //posiciones[num_new_sources][3];
             /*
 	        my_size_num_new_sources = num_new_sources/num_procs; 
@@ -600,19 +605,19 @@ void debuggeo(int flag, int rank){
 				my_begin_num_new_sources = resto + my_size_num_new_sources*rank;
 			}
 			
-*/
-            for(j=0; j<num_new_sources; j++){
+*/			//printf("Mi rank: %d, num_new_sources en food spot: %d\n", rank, num_new_sources);
+            for(j=0; j<num_new_sources2; j++){
                 
-                posiciones[j][0] = (int)(food_spot_row + (food_spot_size_rows * erand48( food_spot_random_seq ))); //row
-				posiciones[j][1] = (int)(food_spot_col + (food_spot_size_cols * erand48( food_spot_random_seq ))); // col
-				posiciones[j][2] = (float)( food_spot_level * erand48( food_spot_random_seq )); // food
+                posiciones[0][j] = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq )); //row
+				posiciones[1][j] = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq )); // col
+				posiciones[2][j] = (float)( food_spot_level * erand48( food_spot_random_seq )); // food
                 
             }
 
             
-			for (i=0; i<num_new_sources; i++) {
-				if(mine(posiciones[i][0],posiciones[i][1])){
-                    accessMat( culture, posiciones[i][0],posiciones[i][1] ) += posiciones[i][2];
+			for (i=0; i<num_new_sources2; i++) {
+				if(mine(posiciones[0][i],posiciones[1][i])){
+                    accessMat( culture, posiciones[0][i],posiciones[1][i] ) += posiciones[2][i];
                 }
 			}
 		}

@@ -486,21 +486,8 @@ int main(int argc, char *argv[])
 	#define TAG 1000
 	MPI_Request request, food_generator;
 
-<<<<<<< HEAD
-    /*
-	 * Matrix division.
-	 * Size for each "section" (sub-matrix in each process):
-	 *
-	 */
-	// 3.1
-	int fraction = ((int)rows * (int)columns)/(nprocs - 1); // Size of matrix for each process.
-
-	// Check if there are surplus processes:
-	if (fraction < THRESHOLD)
-=======
 	// Use one process to calculate food generation, if available:
 	if (nprocs >  MIN_SIMULATION)
->>>>>>> 2adb34222a4487c04edfb92c6dbb6fb16184b34a
 	{
 		/*
 		 * Matrix division.

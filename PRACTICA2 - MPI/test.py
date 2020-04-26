@@ -5,7 +5,7 @@ from sys import argv
 system(f"sed -nr 's/^[^#]/mpiexec -n {argv[1]} ./p' test.sh > t")
 system("chmod 755 t")
 system("./t > x")
-x = open("x", "r").readlines()[12::13]
+x = open("x", "r").readlines()[2::3]
 o = open("original.txt", "r").readlines()
 #remove("x")
 remove("t")
