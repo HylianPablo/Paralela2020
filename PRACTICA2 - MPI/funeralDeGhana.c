@@ -441,11 +441,35 @@ int main(int argc, char *argv[])
 	 *
 	 */
     // 3.1
+
+    
+
     update_time(time3_1);
-    int fraction = ((long)rows * (long)columns) / nprocs - 1; // Size of matrix for each process.
-    int remainder = (rows * columns) % nprocs - 1;            // Remaining unasigned positions.
+
+    int nprocs_aux = (nprocs == 1) ? nprocs : nprocs-1;
+
+    int fraction = ((long)rows * (long)columns) / nprocs_aux; // Size of matrix for each process.
+    int remainder = (rows * columns) % nprocs_aux;            // Remaining unasigned positions.
     int my_size = fraction + (rank < remainder);
 
+    int singleProcess;
+    if(nprocs == 1){
+        singleProcess=1;
+    }else{
+        singleProcess=0;
+        nprocs--;
+    }
+    if (rank != nprocs || nprocs == 1)
+    {
+        culture = (float *)calloc(sizeof(float), (size_t)my_size);
+    }
+    else
+    {
+        culture = (float *)calloc(sizeof(float), (size_t)rows * columns);
+    }
+    culture_cells = (short *)calloc(sizeof(short), (size_t)my_size);
+    float *cultureAux;
+    update_time(time3_1);
     /*
 	 * Beginning for each section.
 	 *
@@ -485,18 +509,7 @@ int main(int argc, char *argv[])
     MPI_Type_commit(&MPI_CellExt);
 
     /* 3. Initialize culture surface and initial cells */
-    if (rank != nprocs - 1 || nprocs == 1)
-    {
-        culture = (float *)calloc(sizeof(float), (size_t)my_size);
-    }
-    else
-    {
-        nprocs--;
-        culture = (float *)calloc(sizeof(float), (size_t)rows * columns);
-    }
-    culture_cells = (short *)calloc(sizeof(short), (size_t)my_size);
-    float *cultureAux;
-    update_time(time3_1);
+    
 
     // Memory errors:
 #ifndef CP_TABLON
@@ -667,8 +680,24 @@ int main(int argc, char *argv[])
             rand4_1[3 * i + 1] = erand48(food_random_seq);
             rand4_1[3 * i + 2] = erand48(food_random_seq);
         }
+        int *tamScatter = (int *)malloc((nprocs+1) * sizeof(int));
+        int *offsetScatter = (int *)malloc((nprocs+1) * sizeof(int));
+        int owoset = 0;
 
-        if (rank == nprocs - 1)
+        //int my_size = fraction + (rank < remainder);
+        for (i = 0; i < nprocs+1; i++)
+        {
+            if(i==nprocs){
+                tamScatter[i]=0;
+                offsetScatter[i]=0;
+            }else{
+                tamScatter[i] = fraction + (i < remainder);
+                offsetScatter[i] = owoset;
+                owoset += tamScatter[i];
+            }
+        }
+
+        if (rank == nprocs || singleProcess == 1)
         {
             for (i = 0; i < num_new_sources; i++)
             {
@@ -701,35 +730,25 @@ int main(int argc, char *argv[])
                     //   }
                 }
             }
-            int *tamScatter = (int *)malloc((nprocs) * sizeof(int));
-            int *offsetScatter = (int *)malloc((nprocs) * sizeof(int));
-            int owoset = 0;
-            if (rank != nprocs - 1 || nprocs == 1)
+
+            cultureAux = (float *)malloc(sizeof(float) * (size_t)rows * columns);
+            for (i = 0; i < rows * columns; i++)
             {
-                cultureAux = (float *)malloc(sizeof(float) * (size_t)my_size);
-                for(i=0;i<my_size;i++){
-                    cultureAux[i]=culture[i];
-                }
+                cultureAux[i] = culture[i];
+            }
+
+            printf("HOLA\n");
+            if (singleProcess == 1)
+            {
+                MPI_Scatterv(cultureAux, tamScatter, offsetScatter, MPI_FLOAT, culture, my_size, MPI_FLOAT, nprocs - 1, MPI_COMM_WORLD);
             }
             else
             {
-                cultureAux = (float *)malloc(sizeof(float) * (size_t)rows * columns);
-                for(i=0;i<rows*columns;i++){
-                    cultureAux[i]=culture[i];
-                }
+                MPI_Scatterv(cultureAux, tamScatter, offsetScatter, MPI_FLOAT, culture, my_size, MPI_FLOAT, nprocs, MPI_COMM_WORLD);
             }
-            //int my_size = fraction + (rank < remainder);
-            for (i = 0; i < nprocs; i++)
-            {
-                tamScatter[i] = fraction + (i < remainder);
-                offsetScatter[i] = owoset;
-                owoset += tamScatter[i];
-            }
-            printf("HOLA\n");
-            MPI_Scatterv(cultureAux, tamScatter, offsetScatter, MPI_FLOAT, culture, my_size, MPI_FLOAT, nprocs - 1, MPI_COMM_WORLD);
             printf("SALUDOS\n");
         }
-        if (rank != nprocs - 1 || nprocs == 1)
+        if (rank != nprocs || singleProcess == 1)
         {
             update_time(time4_1);
 
@@ -739,7 +758,6 @@ int main(int argc, char *argv[])
             {
                 cells_moved_to[i] = 0;
             }
-
             int step_dead_cells = 0;
             int max_age = 0;
             // 4.3.0
@@ -811,6 +829,7 @@ int main(int argc, char *argv[])
                     cells_moved_to[cell_section]++;
                 }
             } // End cell movements
+            printf("QUE ONDA WEY\n");
             update_time(time4_3);
 
             /* 4.X - Cell delivery */
@@ -880,7 +899,7 @@ int main(int argc, char *argv[])
                 }
             }
             free(mailbox);
-            int *tamScatter = (int *)malloc(nprocs * sizeof(int));
+            /*int *tamScatter = (int *)malloc(nprocs * sizeof(int));
             int *offsetScatter = (int *)malloc(nprocs * sizeof(int));
             int owoset = 0;
             //int my_size = fraction + (rank < remainder);
@@ -889,10 +908,18 @@ int main(int argc, char *argv[])
                 tamScatter[i] = fraction + (i < remainder);
                 offsetScatter[i] = owoset;
                 owoset += tamScatter[i];
+            }*/
+            MPI_Barrier(MPI_COMM_WORLD);
+            printf("FIERA\n");
+            if (singleProcess == 1)
+            {
+                MPI_Scatterv(cultureAux, tamScatter, offsetScatter, MPI_FLOAT, culture, my_size, MPI_FLOAT, nprocs - 1, MPI_COMM_WORLD);
             }
-            printf("FIERA");
-            MPI_Scatterv(cultureAux, tamScatter, offsetScatter, MPI_FLOAT, culture, my_size, MPI_FLOAT, nprocs - 1, MPI_COMM_WORLD);
-            printf("TITAN");
+            else
+            {
+                MPI_Scatterv(cultureAux, tamScatter, offsetScatter, MPI_FLOAT, culture, my_size, MPI_FLOAT, nprocs, MPI_COMM_WORLD);
+            }
+            printf("TITAN\n");
             update_time(time4_X);
             /* 4.4. Cell actions */
             update_time(time4_4);
