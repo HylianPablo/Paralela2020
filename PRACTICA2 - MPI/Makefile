@@ -4,7 +4,7 @@ CFLAGS_DEBUG= -I. -g -O0
 LIBS=-lm
 CC=mpicc
 
-evolution: funeralDeGhana.c
+evolution: kuma.c
 	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
 
 debug: evolution_mpi.c
