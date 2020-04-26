@@ -542,12 +542,12 @@ int main(int argc, char *argv[])
 			bool simulating = 1;
 			int num_new_sources = (int)(rows * columns * food_density);
 			int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
-			float food_spots[3 * (num_new_sources + num_new_sources_spot)];
+			float **food_spots = (float **)malloc(sizeof(float *) * (size_t)(nprocs - 1));
+			for (i = 0; i < nprocs - 1; i++)
+			{
+				food_spots[i] = (float *)malloc(sizeof(float) * (size_t)(3 * (num_new_sources + num_new_sources_spot)));
+			}
 			int number_food_spots[nprocs], food_offsets[nprocs];
-
-			food_spots[0] = 0.0f;
-			food_spots[1] = 0.0f;
-			food_spots[2] = 0.0f;
 
 			MPI_Irecv(&simulating, 1, MPI_C_BOOL, 0, TAG, universe, &food_generator);
 			while (simulating)
@@ -568,23 +568,9 @@ int main(int argc, char *argv[])
 
 					int section = sectionCoords(row, col);
 
-					// Move elements in food_spots correctly:
-					for (j = nprocs - 1; j > section; j--)
-					{
-						int first = food_offsets[j];
-						int next = first + number_food_spots[j];
-
-						food_spots[next] = food_spots[first];
-						food_spots[next + 1] = food_spots[first + 1];
-						food_spots[next + 2] = food_spots[first + 2];
-
-						food_offsets[j] += 3;
-					}
-					int next = food_offsets[section] + number_food_spots[section];
-
-					food_spots[next] = food;
-					food_spots[next + 1] = row;
-					food_spots[next + 2] = col;
+					food_spots[section][number_food_spots[section]] = food;
+					food_spots[section][number_food_spots[section] + 1] = row;
+					food_spots[section][number_food_spots[section] + 2] = col;
 					number_food_spots[section] += 3;
 				}
 
@@ -599,32 +585,24 @@ int main(int argc, char *argv[])
 
 						int section = sectionCoords(row, col);
 
-						// Move elements in food_spots correctly:
-						for (j = nprocs - 1; j > section; j--)
-						{
-							int first = food_offsets[j];
-							int next = first + number_food_spots[j];
-
-							food_spots[next] = food_spots[first];
-							food_spots[next + 1] = food_spots[first + 1];
-							food_spots[next + 2] = food_spots[first + 2];
-
-							food_offsets[j] += 3;
-						}
-						int next = food_offsets[section] + number_food_spots[section];
-
-						food_spots[next] = food;
-						food_spots[next + 1] = row;
-						food_spots[next + 2] = col;
+						food_spots[section][number_food_spots[section]] = food;
+						food_spots[section][number_food_spots[section] + 1] = row;
+						food_spots[section][number_food_spots[section] + 2] = col;
 						number_food_spots[section] += 3;
 					}
+				}
+
+				for (i = 1; i < (nprocs - 1); i++)
+				{
+					food_offsets[i] = food_offsets[i - 1] + number_food_spots[i - 1];
+					memcpy(&food_spots[0][food_offsets[i]], food_spots[i],  sizeof(float) * (size_t)number_food_spots[i]);
 				}
 
 				MPI_Wait(&food_generator, MPI_STATUS_IGNORE);
 				if (simulating)
 				{
 					MPI_Scatter(number_food_spots, 1, MPI_INT, NULL, 0, MPI_INT, rank, universe);
-					MPI_Scatterv(food_spots, number_food_spots, food_offsets, MPI_FLOAT, NULL, 0, MPI_FLOAT, rank, universe);
+					MPI_Scatterv(food_spots[0], number_food_spots, food_offsets, MPI_FLOAT, NULL, 0, MPI_FLOAT, rank, universe);
 					MPI_Irecv(&simulating, 1, MPI_C_BOOL, 0, TAG, universe, &food_generator);
 				}
 				//update_time(time4_1);
