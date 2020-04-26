@@ -385,6 +385,7 @@ int main(int argc, char *argv[]) {
 			float food = (float)( food_level * erand48( food_random_seq ));
 			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
+		printf("%d\n", num_new_sources);			
 		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
@@ -394,6 +395,8 @@ int main(int argc, char *argv[]) {
 				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
 				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			}
+
+			printf("%d\n", num_new_sources);
 		}
 
 		/* 4.2. Prepare ancillary data structures */
