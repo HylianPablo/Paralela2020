@@ -561,23 +561,23 @@ int main(int argc, char *argv[])
 				int section = sectionCoords(row, col);
 
 				// Move elements in food_spots correctly:
-				number_food_spots[section] += 3;
-				for (j = section + 1; j < nprocs; j++)
+				for (j = nprocs - 1; j > section; j--)
 				{
-					int offset = food_offsets[j - 1] + number_food_spots[j - 1];
-					float tmp_food = food_spots[offset];
-					float tmp_row = food_spots[offset + 1];
-					float tmp_col = food_spots[offset + 2];
+					int first = food_offsets[j];
+					int next = first + number_food_spots[j];
 
-					food_spots[offset] = food;
-					food_spots[offset + 1] = row;
-					food_spots[offset + 2] = col;
-					food = tmp_food;
+					food_spots[next] = food_spots[first];
+					food_spots[next + 1] = food_spots[first + 1];
+					food_spots[next + 2] = food_spots[first + 2];
 
-					row = tmp_row;
-					col = tmp_col;
-					food_offsets[j] = offset;
+					food_offsets[j] += 3;
 				}
+				int next = food_offsets[section] + number_food_spots[section];
+
+				food_spots[next] = food;
+				food_spots[next + 1] = row;
+				food_spots[next + 2] = col;
+				number_food_spots[section] += 3;
 			}
 
 			// In the special food spot
@@ -592,23 +592,23 @@ int main(int argc, char *argv[])
 					int section = sectionCoords(row, col);
 
 					// Move elements in food_spots correctly:
-					number_food_spots[section] += 3;
-					for (j = section + 1; j < nprocs; j++)
+					for (j = nprocs - 1; j > section; j--)
 					{
-						int offset = food_offsets[j - 1] + number_food_spots[j - 1];
-						float tmp_food = food_spots[offset];
-						float tmp_row = food_spots[offset + 1];
-						float tmp_col = food_spots[offset + 2];
+						int first = food_offsets[j];
+						int next = first + number_food_spots[j];
 
-						food_spots[offset] = food;
-						food_spots[offset + 1] = row;
-						food_spots[offset + 2] = col;
-						food = tmp_food;
+						food_spots[next] = food_spots[first];
+						food_spots[next + 1] = food_spots[first + 1];
+						food_spots[next + 2] = food_spots[first + 2];
 
-						row = tmp_row;
-						col = tmp_col;
-						food_offsets[j] = offset;
+						food_offsets[j] += 3;
 					}
+					int next = food_offsets[section] + number_food_spots[section];
+
+					food_spots[next] = food;
+					food_spots[next + 1] = row;
+					food_spots[next + 2] = col;
+					number_food_spots[section] += 3;
 				}
 			}
 
