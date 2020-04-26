@@ -546,7 +546,7 @@ int main(int argc, char *argv[])
 		{
 			/* 4.1. Spreading new food */
 			//update_time(time4_1);
-			for (i = 0; i < (nprocs); i++)
+			for (i = 0; i < nprocs; i++)
 			{
 				number_food_spots[i] = 0;
 				food_offsets[i] = 0;
@@ -561,6 +561,7 @@ int main(int argc, char *argv[])
 				int section = sectionCoords(row, col);
 
 				// Move elements in food_spots correctly:
+				number_food_spots[section] += 3;
 				for (j = section + 1; j < nprocs; j++)
 				{
 					int offset = food_offsets[j - 1] + number_food_spots[j - 1];
@@ -568,7 +569,6 @@ int main(int argc, char *argv[])
 					float tmp_row = food_spots[offset + 1];
 					float tmp_col = food_spots[offset + 2];
 
-					int k = 0;
 					food_spots[offset] = food;
 					food_spots[offset + 1] = row;
 					food_spots[offset + 2] = col;
@@ -576,16 +576,8 @@ int main(int argc, char *argv[])
 
 					row = tmp_row;
 					col = tmp_col;
-					food_offsets[j] = offset + 3;
+					food_offsets[j] = offset;
 				}
-				int offset = food_offsets[j - 1] + number_food_spots[j - 1];
-				food_spots[offset] = food;
-				food_spots[offset + 1] = row;
-				food_spots[offset + 2] = col;
-
-				food_offsets[j] = offset + 3;
-
-				number_food_spots[section] += 3;
 			}
 
 			// In the special food spot
@@ -600,6 +592,7 @@ int main(int argc, char *argv[])
 					int section = sectionCoords(row, col);
 
 					// Move elements in food_spots correctly:
+					number_food_spots[section] += 3;
 					for (j = section + 1; j < nprocs; j++)
 					{
 						int offset = food_offsets[j - 1] + number_food_spots[j - 1];
@@ -607,7 +600,6 @@ int main(int argc, char *argv[])
 						float tmp_row = food_spots[offset + 1];
 						float tmp_col = food_spots[offset + 2];
 
-						int k = 0;
 						food_spots[offset] = food;
 						food_spots[offset + 1] = row;
 						food_spots[offset + 2] = col;
@@ -615,16 +607,8 @@ int main(int argc, char *argv[])
 
 						row = tmp_row;
 						col = tmp_col;
-						food_offsets[j] = offset + 3;
+						food_offsets[j] = offset;
 					}
-					int offset = food_offsets[j - 1] + number_food_spots[j - 1];
-					food_spots[offset] = food;
-					food_spots[offset + 1] = row;
-					food_spots[offset + 2] = col;
-
-					food_offsets[j] = offset + 3;
-
-					number_food_spots[section] += 3;
 				}
 			}
 
