@@ -19,6 +19,9 @@ original_debug: original-mpi.c
 print: verbose_print.c
 	$(CC) $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
 
+simulation: funeralDeGhana.c
+	$(CC) $(CFLAGS) -DCP_TABLON $< -o $@ $(LIBS)
+
 clean:
 	rm -f evolution debug original original_debug print
 
