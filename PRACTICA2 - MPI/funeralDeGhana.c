@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
  * Arbitraty minimun number of process dedicated to the simulation.
  *
  */
-#define MIN_SIMULATION 1
+#define MIN_SIMULATION_PROCESSES 1
 /*
  * Minimum of two numbers, as a macro function.
  * It doesn't get any simpler than that. 
@@ -395,8 +395,8 @@ int main(int argc, char *argv[])
  */
 #define potentialSection(cell) (arrayPos(cell) / fraction)
 #define potentialSectionCoords(expr1, expr2) (arrayPosCoords(expr1, expr2) / fraction)
-#define section(cell) (potentialSection(cell) - ((arrayPos(cell) - potentialSection(cell) * fraction < min(remainder, potentialSection(cell))) && potentialSection(cell) != 0))
-#define sectionCoords(expr1, expr2) (potentialSectionCoords(expr1, expr2) - ((arrayPosCoords(expr1, expr2) - potentialSectionCoords(expr1, expr2) * fraction < min(remainder, potentialSectionCoords(expr1, expr2))) && potentialSectionCoords(expr1, expr2) != 0))
+#define section(cell) (potentialSection(cell) - (arrayPos(cell) - potentialSection(cell) * fraction < min(remainder, potentialSection(cell))))
+#define sectionCoords(expr1, expr2) (potentialSectionCoords(expr1, expr2) - (arrayPosCoords(expr1, expr2) - potentialSectionCoords(expr1, expr2) * fraction < min(remainder, potentialSectionCoords(expr1, expr2))))
 
 /* 
  * Macro function measure execution times for each section, if not in a leaderboard
@@ -487,7 +487,7 @@ int main(int argc, char *argv[])
 	MPI_Request request, food_generator;
 
 	// Use one process to calculate food generation, if available:
-	if (nprocs >  MIN_SIMULATION)
+	if (nprocs >  MIN_SIMULATION_PROCESSES)
 	{
 		/*
 		 * Matrix division.
@@ -495,13 +495,13 @@ int main(int argc, char *argv[])
 		 *
 		 */
 		// 3.1
-		int fraction = ((int)rows * (int)columns)/(nprocs - 1); // Size of matrix for each process.
+		int fraction = (rows * columns)/(nprocs - 1); // Size of matrix for each process.
 
 		// Check if there are surplus processes:
 		if (fraction < THRESHOLD)
 		{
 			fraction = THRESHOLD;
-			nprocs = ((int)rows * (int)columns)/THRESHOLD + 1;
+			nprocs = (rows * columns)/THRESHOLD + 1;
 		}
 		int remainder = (rows * columns) % (nprocs - 1); // Remaining unassigned positions.
 
@@ -534,7 +534,7 @@ int main(int argc, char *argv[])
 		MPI_Comm_split(universe, rank < nprocs - 1 ? 1 : MPI_UNDEFINED, rank, &simulators);
 
 		/*
-		 * Random-calculator program:
+		 * Random-food generator program:
 		 *
 		 */
 		if (rank == nprocs - 1)
@@ -543,7 +543,7 @@ int main(int argc, char *argv[])
 			int num_new_sources = (int)(rows * columns * food_density);
 			int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 			float **food_spots = (float **)malloc(sizeof(float *) * (size_t)(nprocs - 1));
-			for (i = 0; i < nprocs - 1; i++)
+			for (i = 0; i < (nprocs - 1); i++)
 			{
 				food_spots[i] = (float *)malloc(sizeof(float) * (size_t)(3 * (num_new_sources + num_new_sources_spot)));
 			}
@@ -607,6 +607,12 @@ int main(int argc, char *argv[])
 				}
 				//update_time(time4_1);
 			}
+
+			for (i = 0; i < (nprocs - 1); i++)
+			{
+				free(food_spots[i]);
+			}
+			free(food_spots);
 
 			/* 5. Stop global time */
 			MPI_Barrier(MPI_COMM_WORLD);
@@ -1521,7 +1527,7 @@ int main(int argc, char *argv[])
 		// For 4.1:
 		int num_new_sources = (int)(rows * columns * food_density);
 		int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
-		int max_sources = num_new_sources > num_new_sources_spot ? num_new_sources : num_new_sources_spot;
+		int max_sources = max(num_new_sources, num_new_sources_spot);
 		float rand4_1[3 * max_sources];
 
 		// num_cells helpers:
@@ -1949,14 +1955,12 @@ int main(int argc, char *argv[])
 					// Split: Create new cell
 					step_new_cells++;
 
-					// New cell is a copy of parent cell
-					new_cells[step_new_cells - 1] = cells[i];
-
 					// Split energy stored and update age in both cells
 					cells[i].storage /= 2.0f;
-					new_cells[step_new_cells - 1].storage /= 2.0f;
 					cells[i].age = 1;
-					new_cells[step_new_cells - 1].age = 1;
+
+					// New cell is a copy of parent cell
+					new_cells[step_new_cells - 1] = cells[i];
 
 					// Random seed for the new cell, obtained using the parent random sequence
 					new_cells[step_new_cells - 1].random_seq[0] = (unsigned short)nrand48(cells[i].random_seq);
@@ -1979,8 +1983,7 @@ int main(int argc, char *argv[])
 			int sum_stats[2] = { step_new_cells, step_dead_cells };
 			int global_sum_stats[2];
 
-			//MPI_Iallreduce(sum_stats, global_sum_stats, 2, MPI_INT, MPI_SUM, universe, &request);	// Why this doesn't work on the leaderboard??? :C
-			MPI_Allreduce(sum_stats, global_sum_stats, 2, MPI_INT, MPI_SUM, universe);
+			MPI_Iallreduce(sum_stats, global_sum_stats, 2, MPI_INT, MPI_SUM, universe, &request);
 
 			/* 4.7. Join cell lists: Old and new cells list */
 			if (num_cells_alive > num_max_cells)
@@ -2019,6 +2022,9 @@ int main(int argc, char *argv[])
 			float current_max_food_all;
 			MPI_Allreduce(&current_max_food, &current_max_food_all, 1, MPI_FLOAT, MPI_MAX, universe);
 			current_max_food = current_max_food_all;
+
+			// Wait for the other statistics.
+			MPI_Wait(&request, MPI_STATUS_IGNORE);
 			total_cells += (global_sum_stats[0] - global_sum_stats[1]);
 			if (rank == 0)
 			{
@@ -2037,7 +2043,6 @@ int main(int argc, char *argv[])
 				if (total_cells > sim_stat.history_max_alive_cells)
 					sim_stat.history_max_alive_cells = total_cells;
 			}
-			//MPI_Wait(&request, MPI_STATUS_IGNORE);	// Why this doesn't work on the leaderboard (part 2)??? :C
 
 #ifdef DEBUG
 			/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
@@ -2126,7 +2131,7 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNOO0NMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 
  */
 
-    /*
+/*
  *
  * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
  *
