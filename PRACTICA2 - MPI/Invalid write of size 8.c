@@ -458,6 +458,14 @@ int main(int argc, char *argv[])
 	if (!strcmp(name, "heracles")) chosen = false;
 #endif
 
+	// Check if no processor was chosen, and choose all processors.
+	bool any_chosen;
+	MPI_Allreduce(&chosen, &any_chosen, 1, MPI_C_BOOL, MPI_LOR, MPI_COMM_WORLD);
+	if (!any_chosen)
+	{
+		chosen = true;
+	}
+
 	MPI_Comm all_chosen, universe, simulators;
 	MPI_Comm_split(MPI_COMM_WORLD, chosen ? 1 : MPI_UNDEFINED, 0, &all_chosen);
 
