@@ -345,22 +345,6 @@ int main(int argc, char *argv[])
  *
  */
 
-/*
- * Arbitrary minimum number of matrix positions per process.
- *
- */
-#define THRESHOLD 1
-/*
- * Arbitraty minimun number of process dedicated to the simulation.
- *
- */
-#define MIN_SIMULATION_PROCESSES 1
-/*
- * Minimum of two numbers, as a macro function.
- * It doesn't get any simpler than that. 
- *
- */
-#define min(a, b) (a < b ? a : b)
 
 /*
  * Same as the last macro, but with maximum.
@@ -397,6 +381,23 @@ int main(int argc, char *argv[])
 #define potentialSectionCoords(expr1, expr2) (arrayPosCoords(expr1, expr2) / fraction)
 #define section(cell) (potentialSection(cell) - (arrayPos(cell) - potentialSection(cell) * fraction < min(remainder, potentialSection(cell))))
 #define sectionCoords(expr1, expr2) (potentialSectionCoords(expr1, expr2) - (arrayPosCoords(expr1, expr2) - potentialSectionCoords(expr1, expr2) * fraction < min(remainder, potentialSectionCoords(expr1, expr2))))
+
+/*
+ * Arbitrary minimum number of matrix positions per process.
+ *
+ */
+#define THRESHOLD min(nprocs, rows * columns)
+/*
+ * Arbitraty minimun number of process dedicated to the simulation.
+ *
+ */
+#define MIN_SIMULATION_PROCESSES 1
+/*
+ * Minimum of two numbers, as a macro function.
+ * It doesn't get any simpler than that. 
+ *
+ */
+#define min(a, b) (a < b ? a : b)
 
 /* 
  * Macro function measure execution times for each section, if not in a leaderboard
@@ -1338,13 +1339,13 @@ int main(int argc, char *argv[])
 		 *
 		 */
 		// 3.1
-		int fraction = ((int)rows * (int)columns)/nprocs; // Size of matrix for each process.
+		int fraction = (rows * columns)/nprocs; // Size of matrix for each process.
 
 		// Check if there are surplus processes:
 		if (fraction < THRESHOLD)
 		{
 			fraction = THRESHOLD;
-			nprocs = ((int)rows * (int)columns)/THRESHOLD;
+			nprocs = (rows * columns)/THRESHOLD;
 		}
 
 		/*
