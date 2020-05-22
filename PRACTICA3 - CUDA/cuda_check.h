@@ -22,7 +22,7 @@
  * when working in the assignment. 
  */
 
-#ifdef CUDA_CHECK
+#if defined CUDA_CHECK && defined DEVELOPMENT
 
 // If macro CUDA_CHECK is defined do error checks
 #define cudaCheckCall( call )	{ \

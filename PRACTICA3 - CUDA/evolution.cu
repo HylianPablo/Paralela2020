@@ -399,18 +399,26 @@ int main(int argc, char *argv[]) {
  */
 
 #include "cuda_check.h"
+#include "cuda_time.h"
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
 	culture_cells = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
+#ifdef DEVELOPMENT
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
 	}
+#endif // DEVELOPMENT
+	// 3.1
+	time_start();
 	for( i=0; i<rows; i++ )
 		for( j=0; j<columns; j++ ) 
 			accessMat( culture, i, j ) = 0;
+	time_end(time3_1);
 
+	// 3.2
+	time_start();
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20 
@@ -431,6 +439,7 @@ int main(int argc, char *argv[]) {
 	// Statistics: Initialize total number of cells, and max. alive
 	sim_stat.history_total_cells = num_cells;
 	sim_stat.history_max_alive_cells = num_cells;
+	time_end(time3_2);
 
 #ifdef DEBUG
 	/* Show initial cells data */
@@ -455,13 +464,18 @@ int main(int argc, char *argv[]) {
 	int num_cells_alive = num_cells;
 	int iter;
 	int max_food_int = max_food * PRECISION;
+
+	int num_new_sources = (int)(rows * columns * food_density);
+	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
+		update_times();
+
 		int step_new_cells = 0;
 		int step_dead_cells = 0;
 
 		/* 4.1. Spreading new food */
+		time_start();
 		// Across the whole culture
-		int num_new_sources = (int)(rows * columns * food_density);
 		for (i=0; i<num_new_sources; i++) {
 			int row = int_urand48( rows, food_random_seq );
 			int col = int_urand48( columns, food_random_seq );
@@ -470,28 +484,33 @@ int main(int argc, char *argv[]) {
 		}
 		// In the special food spot
 		if ( food_spot_active ) {
-			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
-			for (i=0; i<num_new_sources; i++) {
+			for (i=0; i<num_new_sources_spot; i++) {
 				int row = food_spot_row + int_urand48( food_spot_size_rows, food_spot_random_seq );
 				int col = food_spot_col + int_urand48( food_spot_size_cols, food_spot_random_seq );
 				int food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
 				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			}
 		}
+		time_end(time4_1);
 
 		/* 4.2. Prepare ancillary data structures */
+		time_start();
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) 
 				accessMat( culture_cells, i, j ) = 0;
  		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		int *food_to_share = (int *)malloc( sizeof(int) * num_cells );
+#ifdef DEVELOPMENT
 		if ( food_to_share == NULL ) {
 			fprintf(stderr,"-- Error allocating food_to_share structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
 		}
+#endif // DEVELOPMENT
+		time_end(time4_2);
 
 		/* 4.3. Cell movements */
+		time_start();
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
@@ -546,14 +565,18 @@ int main(int argc, char *argv[]) {
 				food_to_share[i] = accessMat( culture, cells[i].pos_row / PRECISION, cells[i].pos_col / PRECISION );
 			}
 		} // End cell movements
+		time_end(time4_3);
 		
 		/* 4.4. Cell actions */
+		time_start();
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+#ifdef DEVELOPMENT
 		if ( new_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
 		}
+#endif // DEVELOPMENT
 
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
@@ -594,8 +617,10 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		} // End cell actions
+		time_end(time4_4);
 
 		/* 4.5. Clean ancillary data structures */
+		time_start();
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
@@ -604,8 +629,10 @@ int main(int argc, char *argv[]) {
 		}
 		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
 		free( food_to_share );
+		time_end(time4_5);
 
 		/* 4.6. Clean dead cells from the original list */
+		time_start();
 		// 4.6.1. Move alive cells to the left to substitute dead cells
 		int free_position = 0;
 		int alive_in_main_list = 0;
@@ -621,8 +648,10 @@ int main(int argc, char *argv[]) {
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
 		num_cells = alive_in_main_list;
 		cells = (Cell *)realloc( cells, sizeof(Cell) * num_cells );
+		time_end(time4_6);
 
 		/* 4.7. Join cell lists: Old and new cells list */
+		time_start();
 		if ( step_new_cells > 0 ) {
 			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
 			for (j=0; j<step_new_cells; j++)
@@ -630,8 +659,10 @@ int main(int argc, char *argv[]) {
 			num_cells += step_new_cells;
 		}
 		free( new_cells );
+		time_end(time4_7);
 
 		/* 4.8. Decrease non-harvested food */
+		time_start();
 		current_max_food = 0;
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
@@ -639,8 +670,10 @@ int main(int argc, char *argv[]) {
 				if ( accessMat( culture, i, j ) > current_max_food ) 
 					current_max_food = accessMat( culture, i, j );
 			}
+		time_end(time4_8);
 
 		/* 4.9. Statistics */
+		time_start();
 		// Statistics: Max food
 		if ( current_max_food > sim_stat.history_max_food ) sim_stat.history_max_food = current_max_food;
 		// Statistics: Max new cells per step
@@ -650,6 +683,7 @@ int main(int argc, char *argv[]) {
 		if ( step_dead_cells > sim_stat.history_max_dead_cells ) sim_stat.history_max_dead_cells = step_dead_cells;
 		// Statistics: Max alive cells per step
 		if ( num_cells_alive > sim_stat.history_max_alive_cells ) sim_stat.history_max_alive_cells = num_cells_alive;
+		time_end(time4_9);
 
 
 #ifdef DEBUG
@@ -658,6 +692,7 @@ int main(int argc, char *argv[]) {
 #endif // DEBUG
 	}
 
+	print_times();
 	
 /*
  *
