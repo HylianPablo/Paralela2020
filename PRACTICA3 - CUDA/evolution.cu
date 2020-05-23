@@ -577,71 +577,24 @@ int main(int argc, char *argv[]) {
 		} // End cell movements
 		time_end(time4_3);
 
-		/* 4.4. Cell actions */
-		time_start();
-		// Space for the list of new cells (maximum number of new cells is num_cells)
-		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
-#ifdef DEVELOPMENT
-		if ( new_cells == NULL ) {
-			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
-			exit( EXIT_FAILURE );
+		int *alives = (int *)calloc(num_cells,sizeof(int));
+		int *steps = (int *)calloc(num_cells,sizeof(int));
+		int *histories = (int *)calloc(num_cells,sizeof(int));
+		Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
+		cudaCheckKernel((fourAndFive_loops<<<rows*columns/1024+1,1024>>>(culture,culture_cells,num_cells, cells,alives,steps,histories)));
+
+		cudaCheckCall((cudaMemcpy(alives,alives,num_cells*sizeof(int),cudaMemcpyDeviceToHost)));
+		cudaCheckCall((cudaMemcpy(steps,steps,num_cells*sizeof(int),cudaMemcpyDeviceToHost)));
+		cudaCheckCall((cudaMemcpy(histories,histories,num_cells*sizeof(int),cudaMemcpyDeviceToHost)));
+		cudaCheckCall((cudaMemcpy(new_cells,new_cells,num_cells*sizeof(Cell),cudaMemcpyDeviceToHost)));
+
+		for(i=0;i<num_cells;i++){
+			num_cells_alive+=alives[i];
+			step_new_cells+=steps[i];
+			sim_stat.history_total_cells+=histories[i];
 		}
-#endif // DEVELOPMENT
 
-		for (i=0; i<num_cells; i++) {
-			if ( cells[i].alive ) {
-				/* 4.4.1. Food harvesting */
-				int food;
-				cudaCheckCall((cudaMemcpy(&food, &culture[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost)));
-
-				int count;
-				cudaCheckCall((cudaMemcpy(&count, &culture_cells[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost)));
-
-				int my_food = food / count;
-				cells[i].storage += my_food;
-
-				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
-				if ( cells[i].age > 30 && cells[i].storage > ENERGY_NEEDED_TO_SPLIT ) {
-					// Split: Create new cell
-					num_cells_alive ++;
-					sim_stat.history_total_cells ++;
-					step_new_cells ++;
-
-					// New cell is a copy of parent cell
-					new_cells[ step_new_cells-1 ] = cells[i];
-
-					// Split energy stored and update age in both cells
-					cells[i].storage /= 2;
-					new_cells[ step_new_cells-1 ].storage /= 2;
-					cells[i].age = 1;
-					new_cells[ step_new_cells-1 ].age = 1;
-
-					// Random seed for the new cell, obtained using the parent random sequence
-					new_cells[ step_new_cells-1 ].random_seq[0] = (unsigned short)glibc_nrand48( cells[i].random_seq );
-					new_cells[ step_new_cells-1 ].random_seq[1] = (unsigned short)glibc_nrand48( cells[i].random_seq );
-					new_cells[ step_new_cells-1 ].random_seq[2] = (unsigned short)glibc_nrand48( cells[i].random_seq );
-
-					// Both cells start in random directions
-					cell_new_direction( &cells[i] );
-					cell_new_direction( &new_cells[ step_new_cells-1 ] );
-				
-					// Mutations of the movement genes in both cells
-					cell_mutation( &cells[i] );
-					cell_mutation( &new_cells[ step_new_cells-1 ] );
-				}
-			}
-		} // End cell actions
-		time_end(time4_4);
-
-		/* 4.5. Clean ancillary data structures */
-		time_start();
-		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
-		for (i=0; i<num_cells; i++) {
-			if ( cells[i].alive ) {
-				cudaCheckCall((cudaMemset(&culture[matPos(cells[i].pos_row, cells[i].pos_col)], 0, sizeof(int))));
-			}
-		}
-		time_end(time4_5);
+		
 
 		/* 4.6. Clean dead cells from the original list */
 		time_start();
