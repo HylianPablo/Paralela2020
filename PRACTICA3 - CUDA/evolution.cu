@@ -418,13 +418,13 @@ int main(int argc, char *argv[]) {
 #include "cuda_time.h"
 
 	/* 3. Initialize culture surface and initial cells */
-	cudaCheckCall(cudaMalloc(&culture, sizeof(int) * (size_t)rows * (size_t)columns));
-	cudaCheckCall(cudaMalloc(&culture_cells, sizeof(int) * (size_t)rows * (size_t)columns));
+	cudaCheckCall((cudaMalloc(&culture, sizeof(int) * (size_t)rows * (size_t)columns)));
+	cudaCheckCall((cudaMalloc(&culture_cells, sizeof(int) * (size_t)rows * (size_t)columns)));
 
 	// 3.1
 	time_start();
-	cudaCheckCall(cudaMemset(culture, 0, sizeof(int) * (size_t)rows * (size_t)columns));
-	cudaCheckCall(cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns));
+	cudaCheckCall((cudaMemset(culture, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
+	cudaCheckCall((cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
 	time_end(time3_1);
 
 	// 3.2
@@ -481,7 +481,7 @@ int main(int argc, char *argv[]) {
 
 	food_t *food_spots = (food_t *)malloc(sizeof(food_t) * max_new_sources);
 	food_t *food_spots_device;
-	cudaCheckCall(cudaMalloc(&food_spots_device, sizeof(food_t) * max_new_sources));
+	cudaCheckCall((cudaMalloc(&food_spots_device, sizeof(food_t) * max_new_sources)));
 
 	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
 		update_times();
@@ -499,8 +499,8 @@ int main(int argc, char *argv[]) {
 			food_spots[i].pos += col;
 			food_spots[i].food = int_urand48( food_level * PRECISION, food_random_seq );
 		}
-		cudaCheckCall(cudaMemcpy(food_spots_device, food_spots, sizeof(food_t) * num_new_sources, cudaMemcpyHostToDevice));
-		cudaCheckCall(placeFood<<<num_new_sources/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources));
+		cudaCheckCall((cudaMemcpy(food_spots_device, food_spots, sizeof(food_t) * num_new_sources, cudaMemcpyHostToDevice)));
+		cudaCheckKernel((placeFood<<<num_new_sources/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources)));
 		// In the special food spot
 		if ( food_spot_active ) {
 			for (i=0; i<num_new_sources_spot; i++) {
@@ -510,15 +510,15 @@ int main(int argc, char *argv[]) {
 				food_spots[i].pos += col;
 				food_spots[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
 			}
-			cudaCheckCall(cudaMemcpy(food_spots_device, food_spots, sizeof(food_t) * num_new_sources_spot, cudaMemcpyHostToDevice));
-			cudaCheckCall(placeFood<<<num_new_sources_spot/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources_spot));
+			cudaCheckCall((cudaMemcpy(food_spots_device, food_spots, sizeof(food_t) * num_new_sources_spot, cudaMemcpyHostToDevice)));
+			cudaCheckKernel((placeFood<<<num_new_sources_spot/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources_spot)));
 		}
 		time_end(time4_1);
 
 		/* 4.2. Prepare ancillary data structures */
 		time_start();
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */		
-		cudaCheckCall(cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns));
+		cudaCheckCall((cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
 		time_end(time4_2);
 
 		/* 4.3. Cell movements */
@@ -572,7 +572,7 @@ int main(int argc, char *argv[]) {
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				cudaCheckCall(addInDeviceArray<<<1, 1>>>(culture_cells, matPos(cells[i].pos_row, cells[i].pos_col), 1));
+				cudaCheckKernel((addInDeviceArray<<<1, 1>>>(culture_cells, matPos(cells[i].pos_row, cells[i].pos_col), 1)));
 			}
 		} // End cell movements
 		time_end(time4_3);
@@ -592,10 +592,10 @@ int main(int argc, char *argv[]) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
 				int food;
-				cudaCheckCall(cudaMemcpy(&food, &culture[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost));
+				cudaCheckCall((cudaMemcpy(&food, &culture[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost)));
 
 				int count;
-				cudaCheckCall(cudaMemcpy(&count, &culture_cells[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost));
+				cudaCheckCall((cudaMemcpy(&count, &culture_cells[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost)));
 
 				int my_food = food / count;
 				cells[i].storage += my_food;
@@ -638,7 +638,7 @@ int main(int argc, char *argv[]) {
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
-				cudaCheckCall(cudaMemset(&culture[matPos(cells[i].pos_row, cells[i].pos_col)], 0, sizeof(int)));
+				cudaCheckCall((cudaMemset(&culture[matPos(cells[i].pos_row, cells[i].pos_col)], 0, sizeof(int))));
 			}
 		}
 		time_end(time4_5);
@@ -675,13 +675,13 @@ int main(int argc, char *argv[]) {
 
 		/* 4.8. Decrease non-harvested food */
 		time_start();
-		cudaCheckCall(foodDecrease<<<rows*columns/1024 + 1, 1024>>>(culture, rows*columns));
+		cudaCheckKernel((foodDecrease<<<rows*columns/1024 + 1, 1024>>>(culture, rows*columns)));
 
 		int *current_max_food_device;
-		cudaCheckCall(cudaMalloc(&current_max_food_device, sizeof(int)));	// TODO ???
-		cudaCheckCall(reductionMax<<<rows*columns/1024 + 1, 1024, sizeof(int) * 1024>>>(culture, rows*columns, current_max_food_device));
+		cudaCheckCall((cudaMalloc(&current_max_food_device, sizeof(int))));	// TODO ???
+		cudaCheckKernel((reductionMax<<<rows*columns/1024 + 1, 1024, sizeof(int) * 1024>>>(culture, rows*columns, current_max_food_device)));
 
-		cudaCheckCall(cudaMemcpy(&current_max_food, current_max_food_device, sizeof(int), cudaMemcpyDeviceToHost));
+		cudaCheckCall((cudaMemcpy(&current_max_food, current_max_food_device, sizeof(int), cudaMemcpyDeviceToHost)));
 		time_end(time4_8);
 
 		/* 4.9. Statistics */

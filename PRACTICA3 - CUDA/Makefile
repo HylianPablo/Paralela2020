@@ -9,7 +9,7 @@ evolution: evolution.cu *.h
 	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
 
 dev: evolution.cu *.h
-	$(CC) $(CFLAGS_TEST) $< -o evolution $(LIBS)
+	$(CC) $(CFLAGS_TEST) $< -o $@ $(LIBS)
 
 debug: evolution.cu *.h
 	$(CC) $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
