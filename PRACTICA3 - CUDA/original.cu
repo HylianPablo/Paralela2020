@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
 	int max_iter;			// Maximum number of simulation steps
 	int rows, columns;		// Cultivation area sizes
 	int *culture;			// Cultivation area values
-	int *culture_cells;		// Ancillary structure to count the number of cells in a culture space
+	short *culture_cells;		// Ancillary structure to count the number of cells in a culture space
 
 	float max_food;			// Maximum level of food on any position
 	float food_density;		// Number of food sources introduced per step
@@ -402,7 +402,7 @@ int main(int argc, char *argv[]) {
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
-	culture_cells = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
+	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );

@@ -101,7 +101,7 @@ typedef struct {
  * Function: Choose a new direction of movement for a cell
  * 	This function can be changed and/or optimized by the students
  */
-void cell_new_direction( Cell *cell ) {
+__host__ __device__ void cell_new_direction( Cell *cell ) {
 	int angle = int_urand48( INT_2PI, cell->random_seq );
 	cell->mov_row = taylor_sin( angle );
 	cell->mov_col = taylor_cos( angle );
@@ -111,7 +111,7 @@ void cell_new_direction( Cell *cell ) {
  * Function: Mutation of the movement genes on a new cell
  * 	This function can be changed and/or optimized by the students
  */
-void cell_mutation( Cell *cell ) {
+__host__ __device__ void cell_mutation( Cell *cell ) {
 	/* 1. Select which genes change:
 	 	0 Left grows taking part of the Advance part
 	 	1 Advance grows taking part of the Left part
@@ -445,6 +445,9 @@ int main(int argc, char *argv[]) {
 		cells[i].choose_mov[2] = PRECISION / 3;
 		cells[i].choose_mov[1] = PRECISION - cells[i].choose_mov[0] - cells[i].choose_mov[2];
 	}
+	Cell *cells_device;
+	cudaCheckCall((cudaMalloc(&cells_device, sizeof(Cell) * (size_t)num_cells)));
+	cudaCheckCall((cudaMemcpy(cells_device, cells, num_cells, cudaMemcpyHostToDevice)));
 
 	// Statistics: Initialize total number of cells, and max. alive
 	sim_stat.history_total_cells = num_cells;
@@ -577,33 +580,12 @@ int main(int argc, char *argv[]) {
 		} // End cell movements
 		time_end(time4_3);
 
-		int *alives = (int *)calloc(num_cells,sizeof(int));
-		int *steps = (int *)calloc(num_cells,sizeof(int));
-		int *histories = (int *)calloc(num_cells,sizeof(int));
-		Cell *new_cells = (Cell *)malloc(sizeof(Cell) * num_cells);
-		cudaCheckKernel((fourAndFive_loops<<<rows*columns/1024+1,1024>>>(culture,culture_cells,num_cells, cells,alives,steps,histories)));
-
-		cudaCheckCall((cudaMemcpy(alives,alives,num_cells*sizeof(int),cudaMemcpyDeviceToHost)));
-		cudaCheckCall((cudaMemcpy(steps,steps,num_cells*sizeof(int),cudaMemcpyDeviceToHost)));
-		cudaCheckCall((cudaMemcpy(histories,histories,num_cells*sizeof(int),cudaMemcpyDeviceToHost)));
-		cudaCheckCall((cudaMemcpy(new_cells,new_cells,num_cells*sizeof(Cell),cudaMemcpyDeviceToHost)));
-
-		for(i=0;i<num_cells;i++){
-			num_cells_alive+=alives[i];
-			step_new_cells+=steps[i];
-			sim_stat.history_total_cells+=histories[i];
-		}
-
-		
-
 		/* 4.6. Clean dead cells from the original list */
 		time_start();
 		// 4.6.1. Move alive cells to the left to substitute dead cells
 		int free_position = 0;
-		int alive_in_main_list = 0;
 		for( i=0; i<num_cells; i++ ) {
 			if ( cells[i].alive ) {
-				alive_in_main_list ++;
 				if ( free_position != i ) {
 					cells[free_position] = cells[i];
 				}
@@ -611,20 +593,25 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		num_cells = alive_in_main_list;
+		num_cells = free_position;
 		cells = (Cell *)realloc( cells, sizeof(Cell) * num_cells );
 		time_end(time4_6);
 
-		/* 4.7. Join cell lists: Old and new cells list */
-		time_start();
-		if ( step_new_cells > 0 ) {
-			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
-			for (j=0; j<step_new_cells; j++)
-				cells[ num_cells + j ] = new_cells[ j ];
-			num_cells += step_new_cells;
-		}
-		free( new_cells );
-		time_end(time4_7);
+		// Expand cell list:
+		Cell *new_cells;
+		cudaCheckCall((cudaMalloc(new_cells, sizeof(Cell) * 2 * num_cells)));
+		cudaCheckCall((cudaMemset(new_cells, 0, sizeof(Cell) * 2 * Num_cells_alive)));
+		cudaCheckCall((cudaMemcpy(new_cells, cells, sizeof(Cell) * Num_cells_alive)));
+		cudaCheckCall((cudaFree(cells)));
+		cells = new_cells;
+
+		int step_new_cells, *step_new_cells_device;
+		cudaCheckCall((cudaMalloc(&step_new_cells_device, sizeof(int))));
+		int *step_new_cells_device = (int *)malloc(sizeof(int));
+		cudaCheckKernel((evolution44_45<<<num_cells + 1,1024>>>(culture,culture_cells,columns,num_cells, cells_device,step_new_cells_device)));
+
+		cudaCheckCall((cudaMemcpy(&step_new_cells, step_new_cells_device, sizeof(int), cudaMemcpyDeviceToHost)));
+		// History y num_cells_alive
 
 		/* 4.8. Decrease non-harvested food */
 		time_start();
