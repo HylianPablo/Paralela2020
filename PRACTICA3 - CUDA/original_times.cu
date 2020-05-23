@@ -70,18 +70,6 @@ typedef struct {
 
 #include "taylor_trig.h"
 #include "glibc_nrand48.h"
-#include "evolution_kernels.h"
-
-/*
- * Struct for a pair position-food, for food generation
- */
-#ifndef FOOD_T
-#define FOOD_T
-typedef struct {
-	int pos;
-	int food;
-} food_t;
-#endif
 
 /*
  * Get an uniformly distributed random number between 0 and max
@@ -95,7 +83,6 @@ typedef struct {
  *
  */
 #define accessMat( arr, exp1, exp2 )	arr[ (int)(exp1) * columns + (int)(exp2) ]
-#define matPos(exp1, exp2)	(int)(exp1) / PRECISION * columns + (int)(exp2) / PRECISION
 
 /*
  * Function: Choose a new direction of movement for a cell
@@ -168,27 +155,24 @@ void cell_mutation( Cell *cell ) {
  */
 __global__ void reductionMax(int* array, int size, int *result)
 {
-	int tid = threadIdx.x;
-	int globalPos = tid + blockIdx.x * blockDim.x;
+	int globalPos = threadIdx.x + blockIdx.x * blockDim.x;
 
 	extern __shared__ int buffer[ ];
 	if ( globalPos < size ) { 
-		buffer[ tid ] = array[ globalPos ];
+		buffer[ threadIdx.x ] = array[ globalPos ];
 	}
-	else buffer[ tid ] = 0;
+	else buffer[ threadIdx.x ] = 0.0f;
 	__syncthreads();
 
-	// Each iteration half of the buffer elements are reduced.
 	for( int step=blockDim.x/2; step>=1; step /= 2 ) {
-		if ( tid < step )
-			if ( buffer[ tid ] < buffer[ tid + step ] )
-				buffer[ tid ] = buffer[ tid + step ];
-		if ( step > 32 )	// Warps don't need to be synced explicitly.
+		if ( threadIdx.x < step )
+			if ( buffer[ threadIdx.x ] < buffer[ threadIdx.x + step ] )
+				buffer[ threadIdx.x ] = buffer[ threadIdx.x + step ];
+		if ( step > 32 )
 			__syncthreads();
 	}
-	// TODO: unroll warp?
 
-	if ( tid == 0 )
+	if ( threadIdx.x == 0 )
 		atomicMax( result, buffer[0] );
 }
 
@@ -418,13 +402,19 @@ int main(int argc, char *argv[]) {
 #include "cuda_time.h"
 
 	/* 3. Initialize culture surface and initial cells */
-	cudaCheckCall(cudaMalloc(&culture, sizeof(int) * (size_t)rows * (size_t)columns));
-	cudaCheckCall(cudaMalloc(&culture_cells, sizeof(int) * (size_t)rows * (size_t)columns));
-
+	culture = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
+	culture_cells = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
+#ifdef DEVELOPMENT
+	if ( culture == NULL || culture_cells == NULL ) {
+		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
+		exit( EXIT_FAILURE );
+	}
+#endif // DEVELOPMENT
 	// 3.1
 	time_start();
-	cudaCheckCall(cudaMemset(culture, 0, sizeof(int) * (size_t)rows * (size_t)columns));
-	cudaCheckCall(cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns));
+	for( i=0; i<rows; i++ )
+		for( j=0; j<columns; j++ ) 
+			accessMat( culture, i, j ) = 0;
 	time_end(time3_1);
 
 	// 3.2
@@ -477,12 +467,6 @@ int main(int argc, char *argv[]) {
 
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
-	int max_new_sources = max(num_new_sources, num_new_sources_spot);
-
-	food_t *food_spots = (food_t *)malloc(sizeof(food_t) * max_new_sources);
-	food_t *food_spots_device;
-	cudaCheckCall(cudaMalloc(&food_spots_device, sizeof(food_t) * max_new_sources));
-
 	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
 		update_times();
 
@@ -494,31 +478,35 @@ int main(int argc, char *argv[]) {
 		// Across the whole culture
 		for (i=0; i<num_new_sources; i++) {
 			int row = int_urand48( rows, food_random_seq );
-			food_spots[i].pos = row*columns;
 			int col = int_urand48( columns, food_random_seq );
-			food_spots[i].pos += col;
-			food_spots[i].food = int_urand48( food_level * PRECISION, food_random_seq );
+			int food = int_urand48( food_level * PRECISION, food_random_seq );
+			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
-		cudaCheckCall(cudaMemcpy(food_spots_device, food_spots, sizeof(food_t) * num_new_sources, cudaMemcpyHostToDevice));
-		cudaCheckCall(placeFood<<<num_new_sources/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources));
 		// In the special food spot
 		if ( food_spot_active ) {
 			for (i=0; i<num_new_sources_spot; i++) {
-				int row = (food_spot_row + int_urand48( food_spot_size_rows, food_spot_random_seq ));
-				food_spots[i].pos = row*columns;
+				int row = food_spot_row + int_urand48( food_spot_size_rows, food_spot_random_seq );
 				int col = food_spot_col + int_urand48( food_spot_size_cols, food_spot_random_seq );
-				food_spots[i].pos += col;
-				food_spots[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
+				int food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
+				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 			}
-			cudaCheckCall(cudaMemcpy(food_spots_device, food_spots, sizeof(food_t) * num_new_sources_spot, cudaMemcpyHostToDevice));
-			cudaCheckCall(placeFood<<<num_new_sources_spot/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources_spot));
 		}
 		time_end(time4_1);
 
 		/* 4.2. Prepare ancillary data structures */
 		time_start();
-		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */		
-		cudaCheckCall(cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns));
+		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
+		for( i=0; i<rows; i++ )
+			for( j=0; j<columns; j++ ) 
+				accessMat( culture_cells, i, j ) = 0;
+ 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
+		int *food_to_share = (int *)malloc( sizeof(int) * num_cells );
+#ifdef DEVELOPMENT
+		if ( food_to_share == NULL ) {
+			fprintf(stderr,"-- Error allocating food_to_share structures for size: %d x %d \n", rows, columns );
+			exit( EXIT_FAILURE );
+		}
+#endif // DEVELOPMENT
 		time_end(time4_2);
 
 		/* 4.3. Cell movements */
@@ -572,11 +560,13 @@ int main(int argc, char *argv[]) {
 				}
 
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				cudaCheckCall(addInDeviceArray<<<1, 1>>>(culture_cells, matPos(cells[i].pos_row, cells[i].pos_col), 1));
+				accessMat( culture_cells, cells[i].pos_row / PRECISION, cells[i].pos_col / PRECISION ) += 1;
+				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
+				food_to_share[i] = accessMat( culture, cells[i].pos_row / PRECISION, cells[i].pos_col / PRECISION );
 			}
 		} // End cell movements
 		time_end(time4_3);
-
+		
 		/* 4.4. Cell actions */
 		time_start();
 		// Space for the list of new cells (maximum number of new cells is num_cells)
@@ -591,12 +581,8 @@ int main(int argc, char *argv[]) {
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
-				int food;
-				cudaCheckCall(cudaMemcpy(&food, &culture[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost));
-
-				int count;
-				cudaCheckCall(cudaMemcpy(&count, &culture_cells[matPos(cells[i].pos_row, cells[i].pos_col)], sizeof(int), cudaMemcpyDeviceToHost));
-
+				int food = food_to_share[i];
+				int count = accessMat( culture_cells, cells[i].pos_row / PRECISION, cells[i].pos_col / PRECISION );
 				int my_food = food / count;
 				cells[i].storage += my_food;
 
@@ -638,9 +624,11 @@ int main(int argc, char *argv[]) {
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
-				cudaCheckCall(cudaMemset(&culture[matPos(cells[i].pos_row, cells[i].pos_col)], 0, sizeof(int)));
+				accessMat( culture, cells[i].pos_row / PRECISION, cells[i].pos_col / PRECISION ) = 0;
 			}
 		}
+		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
+		free( food_to_share );
 		time_end(time4_5);
 
 		/* 4.6. Clean dead cells from the original list */
@@ -675,13 +663,13 @@ int main(int argc, char *argv[]) {
 
 		/* 4.8. Decrease non-harvested food */
 		time_start();
-		cudaCheckCall(foodDecrease<<<rows*columns/1024 + 1, 1024>>>(culture, rows*columns));
-
-		int *current_max_food_device;
-		cudaCheckCall(cudaMalloc(&current_max_food_device, sizeof(int)));	// TODO ???
-		cudaCheckCall(reductionMax<<<rows*columns/1024 + 1, 1024, sizeof(int) * 1024>>>(culture, rows*columns, current_max_food_device));
-
-		cudaCheckCall(cudaMemcpy(&current_max_food, current_max_food_device, sizeof(int), cudaMemcpyDeviceToHost));
+		current_max_food = 0;
+		for( i=0; i<rows; i++ )
+			for( j=0; j<columns; j++ ) {
+				accessMat( culture, i, j ) -= accessMat( culture, i, j ) / 20;
+				if ( accessMat( culture, i, j ) > current_max_food ) 
+					current_max_food = accessMat( culture, i, j );
+			}
 		time_end(time4_8);
 
 		/* 4.9. Statistics */
@@ -697,15 +685,13 @@ int main(int argc, char *argv[]) {
 		if ( num_cells_alive > sim_stat.history_max_alive_cells ) sim_stat.history_max_alive_cells = num_cells_alive;
 		time_end(time4_9);
 
+
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
 		print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
 	}
 
-	cudaFree(culture);
-	cudaFree(culture_cells);
-	culture = culture_cells = NULL;	// Avoid the segmentation fault later.
 	print_times();
 	
 /*

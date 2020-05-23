@@ -14,9 +14,12 @@ dev: evolution.cu *.h
 debug: evolution.cu *.h
 	$(CC) $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
 
+original: original.cu *.h
+	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
+
 tgz:
 	tar -czf evolution_cuda.tgz Makefile evolution.cu *.h
 
 clean:
-	rm -f evolution debug
+	rm -f evolution debug original
 
