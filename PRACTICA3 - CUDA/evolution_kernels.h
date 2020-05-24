@@ -10,6 +10,8 @@
  * Academic year 2019/2020
  */
 #include "int_float.h"
+#include<stdio.h>
+#include<stdlib.h>
 #define int_urand48( max, seq )	(int)( (long)(max) * glibc_nrand48( seq ) / 2147483648 )
 #define matPos(exp1, exp2)	(int)(exp1) / PRECISION * columns + (int)(exp2) / PRECISION
 
@@ -116,13 +118,14 @@ __global__ void evolution44_45(int *culture, int *culture_cells, int columns, in
 	__syncthreads();
 	culture[matPos(my_cell->pos_row, my_cell->pos_col)] = 0;
 
-	
+	if(global_pos==0)
+		printf("antes del 4.7\n");
 	// 4.7. Join cell lists: Old and new cells list /
 	if (global_pos == 0)
 	{
 		if ( step_new_cells > 0 ) {
 			int free_position = 0;
-			for(i = num_cells + 1; i < 2 * num_cells; i++) {
+			for(int i = num_cells + 1; i < 2 * num_cells; i++) {
 				if ( cells[i].alive ) {
 					if ( free_position != i ) {
 						cells[free_position] = cells[i];
@@ -132,4 +135,6 @@ __global__ void evolution44_45(int *culture, int *culture_cells, int columns, in
 			}
 		}
 	}
+	if(global_pos==0)
+		printf("despues del 4.7\n");
 }
