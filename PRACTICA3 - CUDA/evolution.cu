@@ -70,18 +70,6 @@ typedef struct {
 
 #include "taylor_trig.h"
 #include "glibc_nrand48.h"
-#include "evolution_kernels.h"
-
-/*
- * Struct for a pair position-food, for food generation
- */
-#ifndef FOOD_T
-#define FOOD_T
-typedef struct {
-	int pos;
-	int food;
-} food_t;
-#endif
 
 /*
  * Get an uniformly distributed random number between 0 and max
@@ -95,7 +83,6 @@ typedef struct {
  *
  */
 #define accessMat( arr, exp1, exp2 )	arr[ (int)(exp1) * columns + (int)(exp2) ]
-#define matPos(exp1, exp2)	(int)(exp1) / PRECISION * columns + (int)(exp2) / PRECISION
 
 /*
  * Function: Choose a new direction of movement for a cell
@@ -169,11 +156,11 @@ __host__ __device__ void cell_mutation( Cell *cell ) {
 __global__ void reductionMax(int* array, int size, int *result)
 {
 	int tid = threadIdx.x;
-	int globalPos = tid + blockIdx.x * blockDim.x;
+	int gid = tid + blockIdx.x * blockDim.x;
 
 	extern __shared__ int buffer[ ];
-	if ( globalPos < size ) { 
-		buffer[ tid ] = array[ globalPos ];
+	if ( gid < size ) { 
+		buffer[ tid ] = array[ gid ];
 	}
 	else buffer[ tid ] = 0;
 	__syncthreads();
@@ -192,6 +179,148 @@ __global__ void reductionMax(int* array, int size, int *result)
 		atomicMax( result, buffer[0] );
 }
 
+// ====================================================================
+#define GLOBAL_ID threadIdx.x + blockIdx.x *blockDim.x
+#define CELL_BLOCK num_cells/1024 + 1
+#define CULTURE_BLOCK rows*columns/1024 + 1
+#define THREADS 1024
+
+
+/*
+ * Struct for a pair position-food, for food generation
+ */
+typedef struct {
+	int pos;
+	int food;
+} food_t;
+#define matPos(exp1, exp2)	(int)(exp1) / PRECISION * columns + (int)(exp2) / PRECISION
+
+__global__ void cellInit(Cell *cells, unsigned short *random_seqs, int num_cells, int rows, int columns)
+{
+	int gid = GLOBAL_ID;
+	if (gid >= num_cells) return;
+
+	for (int i = 0; i < 3; i++)
+		cells[gid].random_seq[i] = random_seqs[3*gid + i];
+
+	cells[gid].alive = true;
+	// Initial age: Between 1 and 20 
+	cells[gid].age = 1 + int_urand48( 19, cells[gid].random_seq );
+	// Initial storage: Between 10 and 20 units
+	cells[gid].storage = 10 * PRECISION + int_urand48( 10 * PRECISION, cells[gid].random_seq );
+	// Initial position: Anywhere in the culture arena
+	cells[gid].pos_row = int_urand48( rows * PRECISION, cells[gid].random_seq );
+	cells[gid].pos_col = int_urand48( columns * PRECISION, cells[gid].random_seq );
+	// Movement direction: Unity vector in a random direction
+	cell_new_direction( &cells[gid] );
+	// Movement genes: Probabilities of advancing or changing direction: The sum should be 1.00
+	cells[gid].choose_mov[0] = PRECISION / 3;
+	cells[gid].choose_mov[2] = PRECISION / 3;
+	cells[gid].choose_mov[1] = PRECISION - cells[gid].choose_mov[0] - cells[gid].choose_mov[2];
+}
+
+__global__ void placeFood(int *culture, food_t *food, int count)
+{
+	int gid = GLOBAL_ID;
+
+	if (gid < count)
+	{
+		atomicAdd(&culture[food[gid].pos], food[gid].food);
+	}
+}
+
+__global__ void foodDecrease(int *culture, int size)
+{
+	int gid = GLOBAL_ID;
+
+	if (gid < size)
+	{
+		culture[gid] -= culture[gid] / 20;
+	}
+}
+
+/*
+ * Placeholder function to write to device arrays.
+ * This shouldn't be used.
+ */
+__global__ void addInDeviceArray(int *array, int pos, int value)
+{
+	if (GLOBAL_ID == 0)
+	{
+		array[pos] += value;
+	}
+}
+
+/*
+ * 4.4 and 4.5 loops.
+ */
+__global__ void evolution44_45(int *culture, int *culture_cells, int columns, int num_cells, Cell *cells, int *step_new_cells)
+{
+	/* 4.4. Cell actions */
+	// Space for the list of new cells (maximum number of new cells is num_cells)
+	int gid = GLOBAL_ID;
+	Cell *my_cell = &cells[gid];
+
+	if (gid < num_cells)
+	{
+		/* 4.4.1. Food harvesting */
+		int food = culture[matPos(my_cell->pos_row, my_cell->pos_col)];
+		int count = culture_cells[matPos(my_cell->pos_row, my_cell->pos_col)];
+
+		int my_food = food / count;
+		my_cell->storage += my_food;
+
+		/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
+		if (my_cell->age > 30 && my_cell->storage > ENERGY_NEEDED_TO_SPLIT)
+		{
+			// Split: Create new cell
+			atomicAdd(step_new_cells, 1);
+
+			// Split energy stored and update age in both cells
+			my_cell->storage /= 2;
+			my_cell->age = 1;
+
+			// New cell is a copy of parent cell
+			cells[num_cells + gid] = *my_cell;
+			Cell *my_new_cell = &cells[num_cells + gid];
+
+			// Random seed for the new cell, obtained using the parent random sequence
+			my_new_cell->random_seq[0] = (unsigned short)glibc_nrand48(my_cell->random_seq);
+			my_new_cell->random_seq[1] = (unsigned short)glibc_nrand48(my_cell->random_seq);
+			my_new_cell->random_seq[2] = (unsigned short)glibc_nrand48(my_cell->random_seq);
+
+			// Both cells start in random directions
+			cell_new_direction(my_cell);
+			cell_new_direction(my_new_cell);
+
+			// Mutations of the movement genes in both cells
+			cell_mutation(my_cell);
+			cell_mutation(my_new_cell);
+		}		
+	} // End cell actions
+	__syncthreads();
+	culture[matPos(my_cell->pos_row, my_cell->pos_col)] = 0;
+
+	if(gid==0)
+		printf("antes del 4.7\n");
+	// 4.7. Join cell lists: Old and new cells list /
+	if (gid == 0)
+	{
+		if ( step_new_cells > 0 ) {
+			int free_position = 0;
+			for(int i = num_cells + 1; i < 2 * num_cells; i++) {
+				if ( cells[i].alive ) {
+					if ( free_position != i ) {
+						cells[free_position] = cells[i];
+					}
+					free_position ++;
+				}
+			}
+		}
+	}
+	if(gid==0)
+		printf("despues del 4.7\n");
+}
 
 /*
  *
@@ -429,25 +558,21 @@ int main(int argc, char *argv[]) {
 
 	// 3.2
 	time_start();
-	for( i=0; i<num_cells; i++ ) {
-		cells[i].alive = true;
-		// Initial age: Between 1 and 20 
-		cells[i].age = 1 + int_urand48( 19, cells[i].random_seq );
-		// Initial storage: Between 10 and 20 units
-		cells[i].storage = 10 * PRECISION + int_urand48( 10 * PRECISION, cells[i].random_seq );
-		// Initial position: Anywhere in the culture arena
-		cells[i].pos_row = int_urand48( rows * PRECISION, cells[i].random_seq );
-		cells[i].pos_col = int_urand48( columns * PRECISION, cells[i].random_seq );
-		// Movement direction: Unity vector in a random direction
-		cell_new_direction( &cells[i] );
-		// Movement genes: Probabilities of advancing or changing direction: The sum should be 1.00
-		cells[i].choose_mov[0] = PRECISION / 3;
-		cells[i].choose_mov[2] = PRECISION / 3;
-		cells[i].choose_mov[1] = PRECISION - cells[i].choose_mov[0] - cells[i].choose_mov[2];
-	}
 	Cell *cells_device;
 	cudaCheckCall((cudaMalloc(&cells_device, sizeof(Cell) * (size_t)num_cells)));
 	cudaCheckCall((cudaMemcpy(cells_device, cells, num_cells, cudaMemcpyHostToDevice)));
+	
+	unsigned short *random_seqs = (unsigned short *)malloc(sizeof(unsigned short) * 3 * num_cells);
+	unsigned short *random_seqs_device;
+	cudaCheckCall((cudaMalloc(&random_seqs_device, sizeof(unsigned short) * 3 * num_cells)));
+
+	for (i = 0; i < num_cells; i++)
+		for (j = 0; j < 3; j++)
+			random_seqs[3*i + j] = cells[i].random_seq[j];
+
+	cudaCheckCall((cudaMemcpy(random_seqs_device, random_seqs, 3 * num_cells, cudaMemcpyHostToDevice)));
+
+	cudaCheckKernel((cellInit<<<CELL_BLOCK, THREADS>>>(cells_device, random_seqs_device, num_cells, rows, columns)));
 
 	// Statistics: Initialize total number of cells, and max. alive
 	sim_stat.history_total_cells = num_cells;
@@ -602,38 +727,23 @@ int main(int argc, char *argv[]) {
 		Cell *new_cells;
 		cudaCheckCall((cudaMalloc(&new_cells, sizeof(Cell) * 2 * num_cells)));
 		cudaCheckCall((cudaMemset(new_cells, 0, sizeof(Cell) * 2 * num_cells_alive)));
-		cudaCheckCall((cudaMemcpy(new_cells, cells, sizeof(Cell) * num_cells_alive,cudaMemcpyDeviceToHost))); //no iría más abajo?
+		cudaCheckCall((cudaMemcpy(new_cells, cells, sizeof(Cell) * num_cells_alive, cudaMemcpyHostToDevice)));
 		cudaCheckCall((cudaFree(cells)));
 		cells = new_cells;
 
 		int *step_new_cells_device;
 		cudaCheckCall((cudaMalloc(&step_new_cells_device, sizeof(int))));
-		step_new_cells_device = (int *)malloc(sizeof(int));
-		unsigned short *seeds = (unsigned short *)malloc(sizeof(unsigned short)* 3 * num_cells);
-		unsigned short *seeds_device = (unsigned short **)malloc(sizeof(unsigned short) * num_cells);
-		for(int i=0;i<num_cells;i++){
-			seeds_device[i]=(unsigned short*)malloc(sizeof(unsigned short)*3);
-			fprintf(stderr,"fium\n");
-			seeds_device[i]=*cells[i].random_seq;
-
-		}
-		fprintf(stderr,"fium\n");
-		cudaCheckCall((cudaMalloc(&seeds_device, sizeof(unsigned short) * 3 * num_cells)));
-		fprintf(stderr,"fium\n");
-		//cudaCheckCall((cudaMemcpy(seeds_device,seeds,sizeof(unsigned short)*3*num_cells,cudaMemcpyHostToDevice)));
-
-		cudaCheckKernel((evolution44_45<<<num_cells + 1,1024>>>(culture,culture_cells,columns,num_cells, cells_device,step_new_cells_device,seeds_device)));
+		cudaCheckKernel((evolution44_45<<<CELL_BLOCK, THREADS>>>(culture,culture_cells,columns,num_cells, cells_device,step_new_cells_device)));
 		cudaCheckCall((cudaMemcpy(&step_new_cells, step_new_cells_device, sizeof(int), cudaMemcpyDeviceToHost)));
-		//cudaCheckCall((cudaMemcpy(cells,cells_device,sizeof(Cell)*(num_cells+step_new_cells),cudaMemcpyDeviceToHost))); //devolver cells
 		// History y num_cells_alive
 
 		/* 4.8. Decrease non-harvested food */
 		time_start();
-		cudaCheckKernel((foodDecrease<<<rows*columns/1024 + 1, 1024>>>(culture, rows*columns)));
+		cudaCheckKernel((foodDecrease<<<CULTURE_BLOCK, THREADS>>>(culture, rows*columns)));
 
 		int *current_max_food_device;
 		cudaCheckCall((cudaMalloc(&current_max_food_device, sizeof(int))));	// TODO ???
-		cudaCheckKernel((reductionMax<<<rows*columns/1024 + 1, 1024, sizeof(int) * 1024>>>(culture, rows*columns, current_max_food_device)));
+		cudaCheckKernel((reductionMax<<<CULTURE_BLOCK, THREADS, sizeof(int) * THREADS>>>(culture, rows*columns, current_max_food_device)));
 
 		cudaCheckCall((cudaMemcpy(&current_max_food, current_max_food_device, sizeof(int), cudaMemcpyDeviceToHost)));
 		time_end(time4_8);
