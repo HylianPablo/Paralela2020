@@ -185,6 +185,15 @@ __global__ void reductionMax(int* array, int size, int *result)
 #define CULTURE_BLOCK rows*columns/1024 + 1
 #define THREADS 1024
 
+__device__ int rows_device = 0;
+__device__ int columns_device = 0;
+__device__ int *culture_device = NULL;
+__device__ int *culture_cells_device = NULL;
+__device__ Cell *cells_device = NULL;
+__device__ int current_max_food_device = 0;
+__device__ int step_new_dead_device = 0;
+__device__ int step_new_cells_device = 0;
+__device__ int step_dead_cells_device = 0;
 
 /*
  * Struct for a pair position-food, for food generation
@@ -193,7 +202,16 @@ typedef struct {
 	int pos;
 	int food;
 } food_t;
-#define matPos(exp1, exp2)	(int)(exp1) / PRECISION * columns + (int)(exp2) / PRECISION
+#define matPos(exp1, exp2)	(int)(exp1) / PRECISION * columns_device + (int)(exp2) / PRECISION
+
+__global__ void initGPU(int rows, int columns, int *culture, int *culture_cells, Cell *cells)
+{
+	rows_device = rows;
+	columns_device = columns;
+	culture_device = culture;
+	culutre_cells_device = culture_cells;
+	cells_device = cells;
+}
 
 __global__ void cellInit(Cell *cells, unsigned short *random_seqs, int num_cells, int rows, int columns)
 {
@@ -239,91 +257,75 @@ __global__ void foodDecrease(int *culture, int size)
 	}
 }
 
-/*
- * Placeholder function to write to device arrays.
- * This shouldn't be used.
- */
-__global__ void addInDeviceArray(int *array, int pos, int value)
-{
-	if (GLOBAL_ID == 0)
-	{
-		array[pos] += value;
-	}
-}
-
-__global__ void evolution43 (int *culture, int *culture_cells, Cell *cells, int num_cells){
+__global__ void evolution43 (int num_cells){
 	/* 4.3. Cell movements */
 	int gid = GLOBAL_ID;
-		if(gid>=num_cells) return;
-		//for (i=0; i<num_cells; i++) {
-			if ( cells[gid].alive ) {  //es posible que no lo esté? mirar mpi
-				cells[gid].age ++;
-				// Statistics: Max age of a cell in the simulation history
-				if ( cells[gid].age > sim_stat.history_max_age ) sim_stat.history_max_age = cells[gid].age;  //traerse sim_stat??
+	if(gid>=num_cells) return;
 
-				/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
-				if ( cells[gid].storage < ENERGY_NEEDED_TO_LIVE ) {
-					// Cell has died
-					cells[gid].alive = false;
-					num_cells_alive --; //traer
-					step_dead_cells ++; //traer
-					continue;
-				}
-				if ( cells[gid].storage < ENERGY_NEEDED_TO_MOVE ) {
-					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
-					cells[gid].storage -= ENERGY_SPENT_TO_LIVE;
-				}
-				else {
-					// Consume energy to move
-					cells[gid].storage -= ENERGY_SPENT_TO_MOVE;
-						
-					/* 4.3.2. Choose movement direction */
-					int prob = int_urand48( PRECISION, cells[gid].random_seq );
-					if ( prob < cells[gid].choose_mov[0] ) {
-						// Turn left (90 degrees)
-						int tmp = cells[gid].mov_col;
-						cells[gid].mov_col = cells[gid].mov_row;
-						cells[gid].mov_row = -tmp;
-					}
-					else if ( prob >= cells[gid].choose_mov[0] + cells[gid].choose_mov[1] ) {
-						// Turn right (90 degrees)
-						int tmp = cells[gid].mov_row;
-						cells[gid].mov_row = cells[gid].mov_col;
-						cells[gid].mov_col = -tmp;
-					}
-					// else do not change the direction
-					
-					/* 4.3.3. Update position moving in the choosen direction*/
-					cells[gid].pos_row += cells[gid].mov_row;
-					cells[gid].pos_col += cells[gid].mov_col;
-					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
-					if ( cells[gid].pos_row < 0 ) cells[i].pos_row += rows * PRECISION;
-					if ( cells[gid].pos_row >= rows * PRECISION) cells[gid].pos_row -= rows * PRECISION;
-					if ( cells[gid].pos_col < 0 ) cells[gid].pos_col += columns * PRECISION;
-					if ( cells[gid].pos_col >= columns * PRECISION) cells[gid].pos_col -= columns * PRECISION;
-				}
+	cells_device[gid].age++;
+	// Statistics: Max age of a cell in the simulation history
+	
+	/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
+	if ( cells_device[gid].storage < ENERGY_NEEDED_TO_LIVE ) {
+		// Cell has died
+		cells_device[gid].alive = false;
+		step_dead_cells_device++; //traer
+		//continue;
+	}
+	if ( cells_device[gid].storage < ENERGY_NEEDED_TO_MOVE ) {
+		// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
+		cells_device[gid].storage -= ENERGY_SPENT_TO_LIVE;
+	}
+	else {
+		// Consume energy to move
+		cells_device[gid].storage -= ENERGY_SPENT_TO_MOVE;
+			
+		/* 4.3.2. Choose movement direction */
+		int prob = int_urand48( PRECISION, cells_device[gid].random_seq );
+		if ( prob < cells_device[gid].choose_mov[0] ) {
+			// Turn left (90 degrees)
+			int tmp = cells_device[gid].mov_col;
+			cells_device[gid].mov_col = cells_device[gid].mov_row;
+			cells_device[gid].mov_row = -tmp;
+		}
+		else if ( prob >= cells_device[gid].choose_mov[0] + cells_device[gid].choose_mov[1] ) {
+			// Turn right (90 degrees)
+			int tmp = cells_device[gid].mov_row;
+			cells_device[gid].mov_row = cells_device[gid].mov_col;
+			cells_device[gid].mov_col = -tmp;
+		}
+		// else do not change the direction
+		
+		/* 4.3.3. Update position moving in the choosen direction*/
+		cells_device[gid].pos_row += cells_device[gid].mov_row;
+		cells_device[gid].pos_col += cells_device[gid].mov_col;
+		// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+		if ( cells_device[gid].pos_row < 0 ) cells_device[gid].pos_row += rows_device * PRECISION;
+		if ( cells_device[gid].pos_row >= rows_device * PRECISION) cells_device[gid].pos_row -= rows_device * PRECISION;
+		if ( cells_device[gid].pos_col < 0 ) cells_device[gid].pos_col += columns_device * PRECISION;
+		if ( cells_device[gid].pos_col >= columns_device * PRECISION) cells_device[gid].pos_col -= columns_device * PRECISION;
+	}
 
-				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				cudaCheckKernel((addInDeviceArray<<<1, 1>>>(culture_cells, matPos(cells[gid].pos_row, cells[gid].pos_col), 1)));
-			}
-		//} // End cell movements
+	/* 4.3.4. Annotate that there is one more cell in this culture position */
+	atomicAdd(&culture_cells_device[matPos(cells_device[gid].pos_row, cells_device[gid].pos_col)], 1);
+	// End cell movements
 }
 
 /*
  * 4.4 and 4.5 loops.
  */
-__global__ void evolution44_45(int *culture, int *culture_cells, int columns, int num_cells, Cell *cells, int *step_new_cells)
+__global__ void evolution44_45(int num_cells)
 {
 	/* 4.4. Cell actions */
 	// Space for the list of new cells (maximum number of new cells is num_cells)
 	int gid = GLOBAL_ID;
-	Cell *my_cell = &cells[gid];
+	Cell *my_cell = &cells_device[gid];
 
 	if (gid < num_cells)
 	{
 		/* 4.4.1. Food harvesting */
 		int food = culture[matPos(my_cell->pos_row, my_cell->pos_col)];
-		int count = culture_cells[matPos(my_cell->pos_row, my_cell->pos_col)];
+		int count = culture_cells_device[matPos(my_cell->pos_row, my_cell->pos_col)];
 
 		int my_food = food / count;
 		my_cell->storage += my_food;
@@ -339,8 +341,8 @@ __global__ void evolution44_45(int *culture, int *culture_cells, int columns, in
 			my_cell->age = 1;
 
 			// New cell is a copy of parent cell
-			cells[num_cells + gid] = *my_cell;
-			Cell *my_new_cell = &cells[num_cells + gid];
+			cells_device[num_cells + gid] = *my_cell;
+			Cell *my_new_cell = &cells_device[num_cells + gid];
 
 			// Random seed for the new cell, obtained using the parent random sequence
 			my_new_cell->random_seq[0] = (unsigned short)glibc_nrand48(my_cell->random_seq);
@@ -367,9 +369,9 @@ __global__ void evolution44_45(int *culture, int *culture_cells, int columns, in
 		if ( step_new_cells > 0 ) {
 			int free_position = 0;
 			for(int i = num_cells + 1; i < 2 * num_cells; i++) {
-				if ( cells[i].alive ) {
+				if ( cells_device[i].alive ) {
 					if ( free_position != i ) {
-						cells[free_position] = cells[i];
+						cells_device[free_position] = cells_device[i];
 					}
 					free_position ++;
 				}
@@ -605,13 +607,14 @@ int main(int argc, char *argv[]) {
 #include "cuda_time.h"
 
 	/* 3. Initialize culture surface and initial cells */
-	cudaCheckCall((cudaMalloc(&culture, sizeof(int) * (size_t)rows * (size_t)columns)));
-	cudaCheckCall((cudaMalloc(&culture_cells, sizeof(int) * (size_t)rows * (size_t)columns)));
+	cudaCheckCall((cudaMalloc(&culture_device, sizeof(int) * (size_t)rows * (size_t)columns)));
+	cudaCheckCall((cudaMalloc(&culture_cells_device, sizeof(int) * (size_t)rows * (size_t)columns)));
+
 
 	// 3.1
 	time_start();
-	cudaCheckCall((cudaMemset(culture, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
-	cudaCheckCall((cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
+	cudaCheckCall((cudaMemset(culture_device, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
+	cudaCheckCall((cudaMemset(culture_cells_device, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
 	time_end(time3_1);
 
 	// 3.2
@@ -630,6 +633,7 @@ int main(int argc, char *argv[]) {
 
 	cudaCheckCall((cudaMemcpy(random_seqs_device, random_seqs, 3 * num_cells, cudaMemcpyHostToDevice)));
 
+	cudaCheckKernel((initGPU<<<1, 1>>>(rows, columns, culture_device, culture_cells_device, cells_device)));
 	cudaCheckKernel((cellInit<<<CELL_BLOCK, THREADS>>>(cells_device, random_seqs_device, num_cells, rows, columns)));
 
 	// Statistics: Initialize total number of cells, and max. alive
@@ -687,7 +691,7 @@ int main(int argc, char *argv[]) {
 		}
 		fprintf(stderr,"num_new_sources: %d\n",num_new_sources);
 		cudaCheckCall((cudaMemcpy(food_spots_device, food_spots, sizeof(food_t), cudaMemcpyHostToDevice))); //AQUI!
-		cudaCheckKernel((placeFood<<<num_new_sources/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources)));
+		cudaCheckKernel((placeFood<<<num_new_sources/1024 + 1, THREADS>>>(food_spots_device, num_new_sources)));
 		// In the special food spot
 		if ( food_spot_active ) {
 			for (i=0; i<num_new_sources_spot; i++) {
@@ -698,7 +702,7 @@ int main(int argc, char *argv[]) {
 				food_spots[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
 			}
 			cudaCheckCall((cudaMemcpy(food_spots_device, food_spots, sizeof(food_t) * num_new_sources_spot, cudaMemcpyHostToDevice)));
-			cudaCheckKernel((placeFood<<<num_new_sources_spot/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources_spot)));
+			cudaCheckKernel((placeFood<<<num_new_sources_spot/1024 + 1, THREADS>>>(food_spots_device, num_new_sources_spot)));
 		}
 		time_end(time4_1);
 
@@ -737,13 +741,13 @@ int main(int argc, char *argv[]) {
 
 		int *step_new_cells_device;
 		cudaCheckCall((cudaMalloc(&step_new_cells_device, sizeof(int))));
-		cudaCheckKernel((evolution44_45<<<CELL_BLOCK, THREADS>>>(culture,culture_cells,columns,num_cells, cells_device,step_new_cells_device)));
+		cudaCheckKernel((evolution44_45<<<CELL_BLOCK, THREADS>>>(num_cells)));
 		cudaCheckCall((cudaMemcpy(&step_new_cells, step_new_cells_device, sizeof(int), cudaMemcpyDeviceToHost)));
 		// History y num_cells_alive
 
 		/* 4.8. Decrease non-harvested food */
 		time_start();
-		cudaCheckKernel((foodDecrease<<<CULTURE_BLOCK, THREADS>>>(culture, rows*columns)));
+		cudaCheckKernel((foodDecrease<<<CULTURE_BLOCK, THREADS>>>()));
 
 		int *current_max_food_device;
 		cudaCheckCall((cudaMalloc(&current_max_food_device, sizeof(int))));	// TODO ???
