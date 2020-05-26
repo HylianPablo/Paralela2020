@@ -477,7 +477,6 @@ int main(int argc, char *argv[]) {
 	int num_cells_alive = num_cells;
 	int iter;
 	int max_food_int = max_food * PRECISION;
-
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
 	int max_new_sources = max(num_new_sources, num_new_sources_spot);
@@ -487,7 +486,7 @@ int main(int argc, char *argv[]) {
 	cudaCheckCall((cudaMalloc(&food_spots_device, sizeof(food_t) * max_new_sources)));
 
 	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
-		printf("Iteracion %d\n",iter);
+		fprintf(stderr,"Iteracion %d\n",iter);
 		update_times();
 
 		int step_new_cells = 0;
@@ -503,9 +502,8 @@ int main(int argc, char *argv[]) {
 			food_spots[i].pos += col;
 			food_spots[i].food = int_urand48( food_level * PRECISION, food_random_seq );
 		}
-		printf("num_new_sources: %d\n",num_new_sources);
+		fprintf(stderr,"num_new_sources: %d\n",num_new_sources);
 		cudaCheckCall((cudaMemcpy(food_spots_device, food_spots, sizeof(food_t), cudaMemcpyHostToDevice))); //AQUI!
-		printf("fium\n");
 		cudaCheckKernel((placeFood<<<num_new_sources/1024 + 1, 1024>>>(culture, food_spots_device, num_new_sources)));
 		// In the special food spot
 		if ( food_spot_active ) {
@@ -611,11 +609,22 @@ int main(int argc, char *argv[]) {
 		int *step_new_cells_device;
 		cudaCheckCall((cudaMalloc(&step_new_cells_device, sizeof(int))));
 		step_new_cells_device = (int *)malloc(sizeof(int));
-		cudaCheckKernel((evolution44_45<<<num_cells + 1,1024>>>(culture,culture_cells,columns,num_cells, cells_device,step_new_cells_device)));
-		fprintf(stderr,"Hago bien la operacion\n");
+		unsigned short *seeds = (unsigned short *)malloc(sizeof(unsigned short)* 3 * num_cells);
+		unsigned short *seeds_device = (unsigned short **)malloc(sizeof(unsigned short) * num_cells);
+		for(int i=0;i<num_cells;i++){
+			seeds_device[i]=(unsigned short*)malloc(sizeof(unsigned short)*3);
+			fprintf(stderr,"fium\n");
+			seeds_device[i]=*cells[i].random_seq;
+
+		}
+		fprintf(stderr,"fium\n");
+		cudaCheckCall((cudaMalloc(&seeds_device, sizeof(unsigned short) * 3 * num_cells)));
+		fprintf(stderr,"fium\n");
+		//cudaCheckCall((cudaMemcpy(seeds_device,seeds,sizeof(unsigned short)*3*num_cells,cudaMemcpyHostToDevice)));
+
+		cudaCheckKernel((evolution44_45<<<num_cells + 1,1024>>>(culture,culture_cells,columns,num_cells, cells_device,step_new_cells_device,seeds_device)));
 		cudaCheckCall((cudaMemcpy(&step_new_cells, step_new_cells_device, sizeof(int), cudaMemcpyDeviceToHost)));
-		cudaCheckCall((cudaMemcpy(cells,cells_device,sizeof(Cell)*(num_cells+step_new_cells),cudaMemcpyDeviceToHost))); //devolver cells
-		fprintf(stderr,"Hago bien em memcpy\n");
+		//cudaCheckCall((cudaMemcpy(cells,cells_device,sizeof(Cell)*(num_cells+step_new_cells),cudaMemcpyDeviceToHost))); //devolver cells
 		// History y num_cells_alive
 
 		/* 4.8. Decrease non-harvested food */
@@ -631,7 +640,7 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"fin\n");
 
 
-		cudaCheckCall((cudaMemcpy(food_spots, food_spots_device, sizeof(food_t), cudaMemcpyDeviceToHost))); //devolver food_spots
+		//cudaCheckCall((cudaMemcpy(food_spots, food_spots_device, sizeof(food_t), cudaMemcpyDeviceToHost))); //devolver food_spots
 
 		/* 4.9. Statistics */
 		time_start();

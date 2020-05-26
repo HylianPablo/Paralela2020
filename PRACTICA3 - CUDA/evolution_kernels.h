@@ -64,7 +64,7 @@ __global__ void addInDeviceArray(int *array, int pos, int value)
 /*
  * 4.4 and 4.5 loops.
  */
-__global__ void evolution44_45(int *culture, int *culture_cells, int columns, int num_cells, Cell *cells, int *step_new_cells)
+__global__ void evolution44_45(int *culture, int *culture_cells, int columns, int num_cells, Cell *cells, int *step_new_cells, unsigned short *seeds)
 {
 	/* 4.4. Cell actions */
 	// Space for the list of new cells (maximum number of new cells is num_cells)
@@ -102,9 +102,9 @@ __global__ void evolution44_45(int *culture, int *culture_cells, int columns, in
 			Cell *my_new_cell = &cells[num_cells + global_pos];
 
 			// Random seed for the new cell, obtained using the parent random sequence
-			my_new_cell->random_seq[0] = (unsigned short)glibc_nrand48(cells[global_pos].random_seq);
-			my_new_cell->random_seq[1] = (unsigned short)glibc_nrand48(cells[global_pos].random_seq);
-			my_new_cell->random_seq[2] = (unsigned short)glibc_nrand48(cells[global_pos].random_seq);
+			my_new_cell->random_seq[0] = (unsigned short)glibc_nrand48(&seeds[global_pos]);
+			my_new_cell->random_seq[1] = (unsigned short)glibc_nrand48(&seeds[global_pos]);
+			my_new_cell->random_seq[2] = (unsigned short)glibc_nrand48(&seeds[global_pos]);
 
 			// Both cells start in random directions
 			cell_new_direction(my_cell);
