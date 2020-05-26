@@ -251,6 +251,64 @@ __global__ void addInDeviceArray(int *array, int pos, int value)
 	}
 }
 
+__global__ void evolution43 (int *culture, int *culture_cells, Cell *cells, int num_cells){
+	/* 4.3. Cell movements */
+	int gid = GLOBAL_ID;
+		if(gid>=num_cells) return;
+		//for (i=0; i<num_cells; i++) {
+			if ( cells[gid].alive ) {  //es posible que no lo esté? mirar mpi
+				cells[gid].age ++;
+				// Statistics: Max age of a cell in the simulation history
+				if ( cells[gid].age > sim_stat.history_max_age ) sim_stat.history_max_age = cells[gid].age;  //traerse sim_stat??
+
+				/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
+				if ( cells[gid].storage < ENERGY_NEEDED_TO_LIVE ) {
+					// Cell has died
+					cells[gid].alive = false;
+					num_cells_alive --; //traer
+					step_dead_cells ++; //traer
+					continue;
+				}
+				if ( cells[gid].storage < ENERGY_NEEDED_TO_MOVE ) {
+					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
+					cells[gid].storage -= ENERGY_SPENT_TO_LIVE;
+				}
+				else {
+					// Consume energy to move
+					cells[gid].storage -= ENERGY_SPENT_TO_MOVE;
+						
+					/* 4.3.2. Choose movement direction */
+					int prob = int_urand48( PRECISION, cells[gid].random_seq );
+					if ( prob < cells[gid].choose_mov[0] ) {
+						// Turn left (90 degrees)
+						int tmp = cells[gid].mov_col;
+						cells[gid].mov_col = cells[gid].mov_row;
+						cells[gid].mov_row = -tmp;
+					}
+					else if ( prob >= cells[gid].choose_mov[0] + cells[gid].choose_mov[1] ) {
+						// Turn right (90 degrees)
+						int tmp = cells[gid].mov_row;
+						cells[gid].mov_row = cells[gid].mov_col;
+						cells[gid].mov_col = -tmp;
+					}
+					// else do not change the direction
+					
+					/* 4.3.3. Update position moving in the choosen direction*/
+					cells[gid].pos_row += cells[gid].mov_row;
+					cells[gid].pos_col += cells[gid].mov_col;
+					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+					if ( cells[gid].pos_row < 0 ) cells[i].pos_row += rows * PRECISION;
+					if ( cells[gid].pos_row >= rows * PRECISION) cells[gid].pos_row -= rows * PRECISION;
+					if ( cells[gid].pos_col < 0 ) cells[gid].pos_col += columns * PRECISION;
+					if ( cells[gid].pos_col >= columns * PRECISION) cells[gid].pos_col -= columns * PRECISION;
+				}
+
+				/* 4.3.4. Annotate that there is one more cell in this culture position */
+				cudaCheckKernel((addInDeviceArray<<<1, 1>>>(culture_cells, matPos(cells[gid].pos_row, cells[gid].pos_col), 1)));
+			}
+		//} // End cell movements
+}
+
 /*
  * 4.4 and 4.5 loops.
  */
@@ -650,61 +708,7 @@ int main(int argc, char *argv[]) {
 		cudaCheckCall((cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
 		time_end(time4_2);
 
-		/* 4.3. Cell movements */
-		time_start();
-		for (i=0; i<num_cells; i++) {
-			if ( cells[i].alive ) {
-				cells[i].age ++;
-				// Statistics: Max age of a cell in the simulation history
-				if ( cells[i].age > sim_stat.history_max_age ) sim_stat.history_max_age = cells[i].age;
-
-				/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
-				if ( cells[i].storage < ENERGY_NEEDED_TO_LIVE ) {
-					// Cell has died
-					cells[i].alive = false;
-					num_cells_alive --;
-					step_dead_cells ++;
-					continue;
-				}
-				if ( cells[i].storage < ENERGY_NEEDED_TO_MOVE ) {
-					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
-					cells[i].storage -= ENERGY_SPENT_TO_LIVE;
-				}
-				else {
-					// Consume energy to move
-					cells[i].storage -= ENERGY_SPENT_TO_MOVE;
-						
-					/* 4.3.2. Choose movement direction */
-					int prob = int_urand48( PRECISION, cells[i].random_seq );
-					if ( prob < cells[i].choose_mov[0] ) {
-						// Turn left (90 degrees)
-						int tmp = cells[i].mov_col;
-						cells[i].mov_col = cells[i].mov_row;
-						cells[i].mov_row = -tmp;
-					}
-					else if ( prob >= cells[i].choose_mov[0] + cells[i].choose_mov[1] ) {
-						// Turn right (90 degrees)
-						int tmp = cells[i].mov_row;
-						cells[i].mov_row = cells[i].mov_col;
-						cells[i].mov_col = -tmp;
-					}
-					// else do not change the direction
-					
-					/* 4.3.3. Update position moving in the choosen direction*/
-					cells[i].pos_row += cells[i].mov_row;
-					cells[i].pos_col += cells[i].mov_col;
-					// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
-					if ( cells[i].pos_row < 0 ) cells[i].pos_row += rows * PRECISION;
-					if ( cells[i].pos_row >= rows * PRECISION) cells[i].pos_row -= rows * PRECISION;
-					if ( cells[i].pos_col < 0 ) cells[i].pos_col += columns * PRECISION;
-					if ( cells[i].pos_col >= columns * PRECISION) cells[i].pos_col -= columns * PRECISION;
-				}
-
-				/* 4.3.4. Annotate that there is one more cell in this culture position */
-				cudaCheckKernel((addInDeviceArray<<<1, 1>>>(culture_cells, matPos(cells[i].pos_row, cells[i].pos_col), 1)));
-			}
-		} // End cell movements
-		time_end(time4_3);
+		
 
 		/* 4.6. Clean dead cells from the original list */
 		time_start();
