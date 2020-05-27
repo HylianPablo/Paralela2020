@@ -26,6 +26,10 @@
 #include<cuda.h>
 #include<int_float.h>
 
+
+#include "cuda_check.h"
+#include "cuda_time.h"
+
 /* 
  * Constants: Converted to fixed point with the given PRECISION
  */
@@ -191,7 +195,7 @@ __device__ int *culture_device = NULL;
 __device__ int *culture_cells_device = NULL;
 __device__ Cell *cells_device = NULL;
 __device__ int current_max_food_device = 0;
-__device__ int step_new_dead_device = 0;
+__device__ int step_new_dead_device = 0;  //????????????
 __device__ int step_new_cells_device = 0;
 __device__ int step_dead_cells_device = 0;
 
@@ -209,7 +213,7 @@ __global__ void initGPU(int rows, int columns, int *culture, int *culture_cells,
 	rows_device = rows;
 	columns_device = columns;
 	culture_device = culture;
-	culutre_cells_device = culture_cells;
+	culture_cells_device = culture_cells;
 	cells_device = cells;
 }
 
@@ -235,26 +239,25 @@ __global__ void cellInit(Cell *cells, unsigned short *random_seqs, int num_cells
 	cells[gid].choose_mov[0] = PRECISION / 3;
 	cells[gid].choose_mov[2] = PRECISION / 3;
 	cells[gid].choose_mov[1] = PRECISION - cells[gid].choose_mov[0] - cells[gid].choose_mov[2];
+
+	printf("Edad %d\n",cells[gid].age);
+	printf("Almacenamiento %d\n",cells[gid].storage);
 }
 
-__global__ void placeFood(int *culture, food_t *food, int count)
+__global__ void placeFood(food_t *food, int count)
 {
 	int gid = GLOBAL_ID;
 
 	if (gid < count)
 	{
-		atomicAdd(&culture[food[gid].pos], food[gid].food);
+		atomicAdd(&culture_device[food[gid].pos], food[gid].food);
 	}
 }
 
-__global__ void foodDecrease(int *culture, int size)
+__global__ void foodDecrease()	//alt (int size)
 {
 	int gid = GLOBAL_ID;
-
-	if (gid < size)
-	{
-		culture[gid] -= culture[gid] / 20;
-	}
+		culture_device[gid] -= culture_device[gid] / 20;
 }
 
 __global__ void evolution43 (int num_cells){
@@ -309,22 +312,12 @@ __global__ void evolution43 (int num_cells){
 	/* 4.3.4. Annotate that there is one more cell in this culture position */
 	atomicAdd(&culture_cells_device[matPos(cells_device[gid].pos_row, cells_device[gid].pos_col)], 1);
 	// End cell movements
-}
 
-/*
- * 4.4 and 4.5 loops.
- */
-__global__ void evolution44_45(int num_cells)
-{
-	/* 4.4. Cell actions */
-	// Space for the list of new cells (maximum number of new cells is num_cells)
-	int gid = GLOBAL_ID;
 	Cell *my_cell = &cells_device[gid];
-
 	if (gid < num_cells)
 	{
 		/* 4.4.1. Food harvesting */
-		int food = culture[matPos(my_cell->pos_row, my_cell->pos_col)];
+		int food = culture_device[matPos(my_cell->pos_row, my_cell->pos_col)];
 		int count = culture_cells_device[matPos(my_cell->pos_row, my_cell->pos_col)];
 
 		int my_food = food / count;
@@ -334,7 +327,8 @@ __global__ void evolution44_45(int num_cells)
 		if (my_cell->age > 30 && my_cell->storage > ENERGY_NEEDED_TO_SPLIT)
 		{
 			// Split: Create new cell
-			atomicAdd(step_new_cells, 1);
+			atomicAdd(&step_new_cells_device, 1);
+			printf("Incremento\n");
 
 			// Split energy stored and update age in both cells
 			my_cell->storage /= 2;
@@ -359,14 +353,12 @@ __global__ void evolution44_45(int num_cells)
 		}		
 	} // End cell actions
 	__syncthreads();
-	culture[matPos(my_cell->pos_row, my_cell->pos_col)] = 0;
+	culture_device[matPos(my_cell->pos_row, my_cell->pos_col)] = 0;
 
-	if(gid==0)
-		printf("antes del 4.7\n");
 	// 4.7. Join cell lists: Old and new cells list /
 	if (gid == 0)
 	{
-		if ( step_new_cells > 0 ) {
+		if ( step_new_cells_device > 0 ) {
 			int free_position = 0;
 			for(int i = num_cells + 1; i < 2 * num_cells; i++) {
 				if ( cells_device[i].alive ) {
@@ -378,8 +370,6 @@ __global__ void evolution44_45(int num_cells)
 			}
 		}
 	}
-	if(gid==0)
-		printf("despues del 4.7\n");
 }
 
 /*
@@ -446,7 +436,7 @@ void print_status( int iteration, int rows, int columns, int *culture, int num_c
 #endif
 
 /*
- * Function: Print usage line in stderr
+
  */
 void show_usage( char *program_name ) {
 	fprintf(stderr,"Usage: %s ", program_name );
@@ -560,7 +550,6 @@ int main(int argc, char *argv[]) {
 	printf("Initial cells: %d\n", num_cells );
 #endif // DEBUG
 
-
 	/* 1.8. Initialize random sequences for food dropping */
 	for( i=0; i<3; i++ ) {
 		food_random_seq[i] = (unsigned short)glibc_nrand48( init_random_seq );
@@ -578,7 +567,6 @@ int main(int argc, char *argv[]) {
 		for( j=0; j<3; j++ ) 
 			cells[i].random_seq[j] = (unsigned short)glibc_nrand48( init_random_seq );
 	}
-
 
 #ifdef DEBUG
 	/* 1.10. Print random seed of the initial cells */
@@ -603,13 +591,9 @@ int main(int argc, char *argv[]) {
  *
  */
 
-#include "cuda_check.h"
-#include "cuda_time.h"
-
 	/* 3. Initialize culture surface and initial cells */
 	cudaCheckCall((cudaMalloc(&culture_device, sizeof(int) * (size_t)rows * (size_t)columns)));
 	cudaCheckCall((cudaMalloc(&culture_cells_device, sizeof(int) * (size_t)rows * (size_t)columns)));
-
 
 	// 3.1
 	time_start();
@@ -673,7 +657,6 @@ int main(int argc, char *argv[]) {
 	cudaCheckCall((cudaMalloc(&food_spots_device, sizeof(food_t) * max_new_sources)));
 
 	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
-		fprintf(stderr,"Iteracion %d\n",iter);
 		update_times();
 
 		int step_new_cells = 0;
@@ -689,8 +672,7 @@ int main(int argc, char *argv[]) {
 			food_spots[i].pos += col;
 			food_spots[i].food = int_urand48( food_level * PRECISION, food_random_seq );
 		}
-		fprintf(stderr,"num_new_sources: %d\n",num_new_sources);
-		cudaCheckCall((cudaMemcpy(food_spots_device, food_spots, sizeof(food_t), cudaMemcpyHostToDevice))); //AQUI!
+		cudaCheckCall((cudaMemcpy(food_spots_device, food_spots, sizeof(food_t), cudaMemcpyHostToDevice)));
 		cudaCheckKernel((placeFood<<<num_new_sources/1024 + 1, THREADS>>>(food_spots_device, num_new_sources)));
 		// In the special food spot
 		if ( food_spot_active ) {
@@ -712,8 +694,6 @@ int main(int argc, char *argv[]) {
 		cudaCheckCall((cudaMemset(culture_cells, 0, sizeof(int) * (size_t)rows * (size_t)columns)));
 		time_end(time4_2);
 
-		
-
 		/* 4.6. Clean dead cells from the original list */
 		time_start();
 		// 4.6.1. Move alive cells to the left to substitute dead cells
@@ -732,17 +712,7 @@ int main(int argc, char *argv[]) {
 		time_end(time4_6);
 
 		// Expand cell list:
-		Cell *new_cells;
-		cudaCheckCall((cudaMalloc(&new_cells, sizeof(Cell) * 2 * num_cells)));
-		cudaCheckCall((cudaMemset(new_cells, 0, sizeof(Cell) * 2 * num_cells_alive)));
-		cudaCheckCall((cudaMemcpy(new_cells, cells, sizeof(Cell) * num_cells_alive, cudaMemcpyHostToDevice)));
-		cudaCheckCall((cudaFree(cells)));
-		cells = new_cells;
-
-		int *step_new_cells_device;
-		cudaCheckCall((cudaMalloc(&step_new_cells_device, sizeof(int))));
-		cudaCheckKernel((evolution44_45<<<CELL_BLOCK, THREADS>>>(num_cells)));
-		cudaCheckCall((cudaMemcpy(&step_new_cells, step_new_cells_device, sizeof(int), cudaMemcpyDeviceToHost)));
+		cudaCheckKernel((evolution43<<<CELL_BLOCK, THREADS>>>(num_cells)));
 		// History y num_cells_alive
 
 		/* 4.8. Decrease non-harvested food */
@@ -755,10 +725,9 @@ int main(int argc, char *argv[]) {
 
 		cudaCheckCall((cudaMemcpy(&current_max_food, current_max_food_device, sizeof(int), cudaMemcpyDeviceToHost)));
 		time_end(time4_8);
-		fprintf(stderr,"fin\n");
 
-
-		//cudaCheckCall((cudaMemcpy(food_spots, food_spots_device, sizeof(food_t), cudaMemcpyDeviceToHost))); //devolver food_spots
+		cudaCheckCall(cudaMemcpy(&step_new_cells,&step_new_cells_device,sizeof(int),cudaMemcpyDeviceToHost));
+		cudaCheckCall(cudaMemcpy(&step_dead_cells,&step_dead_cells_device,sizeof(int),cudaMemcpyDeviceToHost));
 
 		/* 4.9. Statistics */
 		time_start();
