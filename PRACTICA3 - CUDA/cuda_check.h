@@ -22,7 +22,7 @@
  * when working in the assignment. 
  */
 
-#if defined CUDA_CHECK && defined DEVELOPMENT
+#ifdef CUDA_CHECK
 
 // If macro CUDA_CHECK is defined do error checks
 #define cudaCheckCall( call )	{ \
@@ -36,16 +36,11 @@
 			if ( ok != cudaSuccess ) \
 				fprintf(stderr, "-- Error CUDA last in line %d: %s\n", __LINE__, cudaGetErrorString( ok ) ); \
 			}
-
-#define cudaCheckKernel( kernel )	{ \
-			kernel; \
-			cudaCheckLast(); \
-			}
 #else
 
 // If macro CUDA_CHECK is not defined skip checks
 #define cudaCheckCall( call )	call
 #define cudaCheckLast()
-#define cudaCheckKernel( kernel )	kernel
+
 #endif
 

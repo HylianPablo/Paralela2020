@@ -41,7 +41,7 @@
  * PI and 2*PI constants as a fixed precision integer
  */
 #define INT_PI	(int)(M_PI * PRECISION)
-#define INT_2PI	(int)(6.283185307179586 * PRECISION)
+#define INT_2PI	(int)(2 * M_PI * PRECISION)
 
 /*
  * Operators:
