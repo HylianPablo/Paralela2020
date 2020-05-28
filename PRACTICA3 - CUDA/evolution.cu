@@ -153,7 +153,7 @@ __host__ __device__ void cell_mutation( Cell *cell ) {
  * Computing Engineering Degree, Universidad de Valladolid
  * Academic year 2019/2020
  */
-__device__ void reductionMax(int* array, int size, int *result)
+__device__ void reductionMax(int *array, int size, int *result)
 {
 	int tid = threadIdx.x;
 	int gid = tid + blockIdx.x * blockDim.x;
@@ -231,13 +231,13 @@ __device__ int num_cells = 0;
 __device__ int *culture = NULL;
 __device__ int *culture_cells = NULL;
 __device__ Cell *cells = NULL;
-__device__ Statistics sim_stat;
+__device__ Statistics *sim_stat;
 __device__ int num_cells_alive = 0;
 __device__ int step_dead_cells = 0;
 __device__ int step_new_cells = 0;
 
 
-__global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int columns_d, Cell *cells_d, int num_cells_d)
+__global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int columns_d, Cell *cells_d, int num_cells_d, Statistics *stats)
 {
 	rows = rows_d;
 	columns = columns_d;
@@ -248,13 +248,15 @@ __global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int co
 
 	num_cells_alive = num_cells;
 
-	sim_stat.history_total_cells = num_cells;
-	sim_stat.history_dead_cells = 0;
-	sim_stat.history_max_alive_cells = num_cells;
-	sim_stat.history_max_new_cells = 0;
-	sim_stat.history_max_dead_cells = 0;
-	sim_stat.history_max_age = 0;
-	sim_stat.history_max_food = 0.0f;
+	sim_stat = stats;
+
+	sim_stat->history_total_cells = num_cells;
+	sim_stat->history_dead_cells = 0;
+	sim_stat->history_max_alive_cells = num_cells;
+	sim_stat->history_max_new_cells = 0;
+	sim_stat->history_max_dead_cells = 0;
+	sim_stat->history_max_age = 0;
+	sim_stat->history_max_food = 0.0f;
 }
 
 __global__ void initCells(unsigned short *random_seqs_d)
@@ -284,24 +286,7 @@ __global__ void initCells(unsigned short *random_seqs_d)
 	my_cell->choose_mov[1] = PRECISION - my_cell->choose_mov[0] - my_cell->choose_mov[2];
 }
 
-__device__ void cleanCells()
-{
-	/* 4.6. Clean dead cells from the original list */
-	// 4.6.1. Move alive cells to the left to substitute dead cells
-	int free_position = 0;
-	for(int i=0; i<num_cells; i++) {
-		if ( cells[i].alive ) {
-			if ( free_position != i ) {
-				cells[free_position] = cells[i];
-			}
-			free_position ++;
-		}
-	}
-
-	num_cells_alive = free_position;
-}
-
-__global__ void step1(food_t *food, int num_food, food_t *food_spot, int num_food_spot)
+__global__ void step1()
 {
 	int gid = GLOBAL_ID;
 
@@ -375,16 +360,36 @@ __global__ void step1(food_t *food, int num_food, food_t *food_spot, int num_foo
 	} // End cell movements
 
 	// Statistics: Max age of a cell in the simulation history
-	reductionMax(cells, num_cells, &sim_stat.history_max_age);
-
-	if (gid == 0) cleanCells();
+	reductionMax(cells, num_cells, &sim_stat->history_max_age);
 }
 
-__global__ void step2(Cell *new_cells)
+__global__ void cleanCells(int *free_position)
 {
 	int gid = GLOBAL_ID;
 
 	Cell *my_cell = &cells[gid];
+
+	if (step_dead_cells > 0 && gid < num_cells)
+	{
+		if ( my_cell->alive ) {
+			int pos = atomicAdd(free_position, 1);
+			if ( pos != gid ) {
+				cells[pos] = *my_cell;
+			}
+		}
+
+		num_cells_alive = *free_position;
+	}
+}
+
+__global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_food_spot)
+{
+	int gid = GLOBAL_ID;
+
+	Cell *my_cell = &cells[gid];
+
+	if (gid < num_food) culture[food[gid].pos] = food[gid].food;
+	if (gid < num_food_spot) culture[food_spot[gid].pos] = food_spot[gid].food;
 
 	/* 4.4.1. Food harvesting */
 	if (gid < num_cells)
@@ -404,26 +409,37 @@ __global__ void step2(Cell *new_cells)
 			my_cell->age = 1;
 
 			// New cell is a copy of parent cell
-			new_cells[ num_cells + step_new_cells-1 ] = *my_cell;
+			cells[ num_cells + step_new_cells-1 ] = *my_cell;
 
 			// Random seed for the new cell, obtained using the parent random sequence
-			new_cells[ num_cells + step_new_cells-1 ].random_seq[0] = (unsigned short)glibc_nrand48( my_cell->random_seq );
-			new_cells[ num_cells + step_new_cells-1 ].random_seq[1] = (unsigned short)glibc_nrand48( my_cell->random_seq );
-			new_cells[ num_cells + step_new_cells-1 ].random_seq[2] = (unsigned short)glibc_nrand48( my_cell->random_seq );
+			cells[ num_cells + step_new_cells-1 ].random_seq[0] = (unsigned short)glibc_nrand48( my_cell->random_seq );
+			cells[ num_cells + step_new_cells-1 ].random_seq[1] = (unsigned short)glibc_nrand48( my_cell->random_seq );
+			cells[ num_cells + step_new_cells-1 ].random_seq[2] = (unsigned short)glibc_nrand48( my_cell->random_seq );
 
 			// Both cells start in random directions
 			cell_new_direction( my_cell );
-			cell_new_direction( &new_cells[ step_new_cells-1 ] );
+			cell_new_direction( &cells[ step_new_cells-1 ] );
 		
 			// Mutations of the movement genes in both cells
 			cell_mutation( my_cell );
-			cell_mutation( &new_cells[ step_new_cells-1 ] );
+			cell_mutation( &cells[ step_new_cells-1 ] );
 		} // End cell actions
 	}
 	if (gid == 0)
 	{
-		sim_stat.history_total_cells += step_new_cells;
+		sim_stat->history_total_cells += step_new_cells;
 		num_cells_alive += step_new_cells;
+
+		printf("%d, %d, %d, %d, %d, %d, %d, %f\n", 
+			num_cells_alive, 
+			sim_stat->history_total_cells, 
+			sim_stat->history_dead_cells, 
+			sim_stat->history_max_alive_cells, 
+			sim_stat->history_max_new_cells, 
+			sim_stat->history_max_dead_cells, 
+			sim_stat->history_max_age,
+			(float)sim_stat->history_max_food / PRECISION
+		);
 	}
 
 }
@@ -434,9 +450,6 @@ __global__ void step3()
 
 	/* 4.5. Clean ancillary data structures */
 	/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
-	if(gid==0){
-		printf("holi\n");
-	}
 	if (gid < num_cells && cells[gid].alive)
 	{
 		accessMat( culture, cells[gid].pos_row / PRECISION, cells[gid].pos_col / PRECISION ) = 0;
@@ -460,21 +473,19 @@ __global__ void step3()
 	{
 		culture[gid] -= culture[gid] / 20;
 	}
-	reductionMax(culture, rows*columns, &sim_stat.history_max_food);
+	reductionMax(culture, rows*columns, &sim_stat->history_max_food);
 
 	/* 4.9. Statistics */
 	if (gid == 0)
 	{
 		// Statistics: Max new cells per step
-		atomicMax(&sim_stat.history_max_new_cells, step_new_cells);
+		sim_stat->history_max_new_cells = max(sim_stat->history_max_new_cells, step_new_cells);
 		// Statistics: Accumulated dead and Max dead cells per step
-		atomicAdd(&sim_stat.history_dead_cells, step_dead_cells);
-		atomicMax(&sim_stat.history_max_dead_cells, step_dead_cells);
+		sim_stat->history_dead_cells += step_dead_cells;
+		sim_stat->history_max_dead_cells = max(sim_stat->history_max_dead_cells, step_dead_cells);
 		// Statistics: Max alive cells per step
-		atomicMax(&sim_stat.history_max_alive_cells, num_cells_alive);
-		printf("Nuevas células: %d\n",&sim_stat.history_max_new_cells);
+		sim_stat->history_max_alive_cells = max(sim_stat->history_max_alive_cells, num_cells_alive);
 	}
-
 }
 
 
@@ -715,10 +726,13 @@ int main(int argc, char *argv[]) {
  *
  */
 #define THREADS 1024
-#define BLOCK max(rows*columns, num_cells)/THREADS + 1
-#define BLOCK_F max3(rows*columns, num_cells, max_new_sources)/THREADS + 1
+#define BLOCK (max(rows*columns, num_cells))/THREADS + 1
+#define BLOCK_F (max3(rows*columns, num_cells, max_new_sources))/THREADS + 1
 
 	/* 3. Initialize culture surface and initial cells */
+	culture = NULL;
+	culture_cells = NULL;
+
 	int *culture_d, *culture_cells_d;
 	cudaCheckCall(cudaMalloc(&culture_d, sizeof(int) * (size_t)rows * (size_t)columns));
 	cudaCheckCall(cudaMalloc(&culture_cells_d, sizeof(int) * (size_t)rows * (size_t)columns));
@@ -740,9 +754,13 @@ int main(int argc, char *argv[]) {
 
 
 	Cell *cells_d;
-	cudaCheckCall(cudaMalloc(&cells_d, sizeof(Cell) * num_cells));
+	cudaCheckCall(cudaMalloc(&cells_d, (size_t) (1l << 32)));
+	Statistics *stats_d;
+	cudaCheckCall(cudaMalloc(&stats_d, sizeof(Statistics)));
+	int *free_position;
+	cudaCheckCall(cudaMalloc(&free_position, sizeof(int)))
 
-	initGPU<<<1, 1>>>(culture_d, culture_cells_d, rows, columns, cells_d, num_cells);	
+	initGPU<<<1, 1>>>(culture_d, culture_cells_d, rows, columns, cells_d, num_cells, stats_d);
 	initCells<<<BLOCK, THREADS>>>(random_seqs_d);
 
 	/* 4. Simulation */
@@ -761,11 +779,13 @@ int main(int argc, char *argv[]) {
 	cudaCheckCall(cudaMalloc(&food_to_place_spot_d, sizeof(food_t) * (size_t)num_new_sources_spot));
 
 	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
-		int step_new_cells = 0;
-		int step_dead_cells = 0;
-
 		/* 4.1. Spreading new food */
 		// Across the whole culture
+		cudaCheckCall(cudaMemset(free_position, 0, sizeof(int)))
+
+		cudaCheckKernel((step1<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
+		cudaCheckKernel((cleanCells<<<BLOCK, THREADS, sizeof(int) * THREADS>>>(free_position)));
+
 		for (i=0; i<num_new_sources; i++) {
 			food_to_place[i].pos = int_urand48( rows, food_random_seq )*columns;
 			food_to_place[i].pos += int_urand48( columns, food_random_seq );
@@ -782,28 +802,15 @@ int main(int argc, char *argv[]) {
 			cudaCheckCall(cudaMemcpy(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)num_new_sources_spot, cudaMemcpyHostToDevice));
 		}
 
-		//if (false)	//?¿?¿?¿?¿?
-		//{
-			 // End cell movements
-			cudaCheckKernel((step1<<<BLOCK,THREADS>>>(food_to_place_d, num_new_sources, food_to_place_spot_d, num_new_sources_spot)));
-			 
-			//Clean dead cells
-			//cudaCheckKernel((cleanCells());)
+		cudaCheckKernel((step2<<<BLOCK_F, THREADS>>>(food_to_place_d, num_new_sources, food_to_place_spot_d, num_new_sources_spot)));
+		cudaCheckKernel((step3<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
 
-			/* 4.4. Cell actions */
-			// Space for the list of new cells (maximum number of new cells is num_cells)
-			Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
-			if ( new_cells == NULL ) {
-				fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
-				exit( EXIT_FAILURE );
-			}
+		Statistics prev_stats = sim_stat;
+		cudaCheckCall((cudaMemcpy(&sim_stat, stats_d, sizeof(Statistics), cudaMemcpyDeviceToHost)));
 
-			//Cell actions on GPU
-			cudaCheckKernel((step2<<<BLOCK,THREADS>>>(new_cells)));
+		if (iter > 0)
+			num_cells_alive += (sim_stat.history_total_cells - prev_stats.history_total_cells) - (sim_stat.history_dead_cells - prev_stats.history_dead_cells);
 
-			cudaCheckKernel((step3<<<BLOCK,THREADS>>>()));
-		//}
-			cudaCheckCall((cudaMemcpy(&sim_stat,&sim_stat,sizeof(Statistics),cudaMemcpyDeviceToHost))); //struct o atributos?
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
 		print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
