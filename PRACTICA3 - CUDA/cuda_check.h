@@ -27,15 +27,19 @@
 // If macro CUDA_CHECK is defined do error checks
 #define cudaCheckCall( call )	{ \
 			cudaError_t ok = call; \
-			if ( ok != cudaSuccess ) \
+			if ( ok != cudaSuccess ) { \
 				fprintf(stderr, "-- Error CUDA call in line %d: %s\n", __LINE__, cudaGetErrorString( ok ) ); \
-			}
+				exit(EXIT_FAILURE); \
+			} \
+		}
 
 #define cudaCheckLast()	{ \
 			cudaError_t ok = cudaGetLastError(); \
-			if ( ok != cudaSuccess ) \
+			if ( ok != cudaSuccess ) { \
 				fprintf(stderr, "-- Error CUDA last in line %d: %s\n", __LINE__, cudaGetErrorString( ok ) ); \
-			}
+				exit(EXIT_FAILURE); \
+			} \
+		}
 #else
 
 // If macro CUDA_CHECK is not defined skip checks
