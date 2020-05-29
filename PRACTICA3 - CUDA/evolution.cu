@@ -267,7 +267,7 @@ __global__ void initCells(unsigned short *random_seqs_d)
 {
 	int gid = GLOBAL_ID;
 
-	if (gid > num_cells) return;
+	if (gid >= num_cells) return;
 
 	Cell *my_cell = &cells[gid];
 
