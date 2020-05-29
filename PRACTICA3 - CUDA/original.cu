@@ -417,7 +417,6 @@ int main(int argc, char *argv[]) {
 		cells[i].age = 1 + int_urand48( 19, cells[i].random_seq );
 		// Initial storage: Between 10 and 20 units
 		cells[i].storage = 10 * PRECISION + int_urand48( 10 * PRECISION, cells[i].random_seq );
-		printf("%d %d\n", i, cells[i].storage);
 		// Initial position: Anywhere in the culture arena
 		cells[i].pos_row = int_urand48( rows * PRECISION, cells[i].random_seq );
 		cells[i].pos_col = int_urand48( columns * PRECISION, cells[i].random_seq );
@@ -596,7 +595,7 @@ int main(int argc, char *argv[]) {
 			}
 		} // End cell actions
 
-		printf("%d, %d, %d, -- %d, %d, %d, %d, %d, %d, %f\n", 
+		printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
 			num_cells_alive,
 			step_new_cells,
 			step_dead_cells,

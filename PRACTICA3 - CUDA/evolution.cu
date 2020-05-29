@@ -279,7 +279,6 @@ __global__ void initCells(unsigned short *random_seqs_d)
 	my_cell->age = 1 + int_urand48( 19, my_cell->random_seq );
 	// Initial storage: Between 10 and 20 units
 	my_cell->storage = 10 * PRECISION + int_urand48( 10 * PRECISION, my_cell->random_seq );
-	printf("%d %d\n", gid, my_cell->storage);
 	// Initial position: Anywhere in the culture arena
 	my_cell->pos_row = int_urand48( rows * PRECISION, my_cell->random_seq );
 	my_cell->pos_col = int_urand48( columns * PRECISION, my_cell->random_seq );
@@ -393,27 +392,28 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 		/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
 		if ( my_cell->age > 30 && my_cell->storage > ENERGY_NEEDED_TO_SPLIT ) {
 			// Split: Create new cell
-			atomicAdd(&step_new_cells, 1);
+			int pos = atomicAdd(&step_new_cells, 1) + num_cells_alive - 1;
 
 			// Split energy stored and update age in both cells
 			my_cell->storage /= 2;
 			my_cell->age = 1;
 
 			// New cell is a copy of parent cell
-			cells[ num_cells_alive + step_new_cells-1 ] = *my_cell;
+			Cell *new_cell = &cells[pos];
+			*new_cell = *my_cell;
 
 			// Random seed for the new cell, obtained using the parent random sequence
-			cells[ num_cells_alive + step_new_cells-1 ].random_seq[0] = (unsigned short)glibc_nrand48( my_cell->random_seq );
-			cells[ num_cells_alive + step_new_cells-1 ].random_seq[1] = (unsigned short)glibc_nrand48( my_cell->random_seq );
-			cells[ num_cells_alive + step_new_cells-1 ].random_seq[2] = (unsigned short)glibc_nrand48( my_cell->random_seq );
+			new_cell->random_seq[0] = (unsigned short)glibc_nrand48( my_cell->random_seq );
+			new_cell->random_seq[1] = (unsigned short)glibc_nrand48( my_cell->random_seq );
+			new_cell->random_seq[2] = (unsigned short)glibc_nrand48( my_cell->random_seq );
 
 			// Both cells start in random directions
 			cell_new_direction( my_cell );
-			cell_new_direction( &cells[ step_new_cells-1 ] );
+			cell_new_direction( new_cell );
 		
 			// Mutations of the movement genes in both cells
 			cell_mutation( my_cell );
-			cell_mutation( &cells[ step_new_cells-1 ] );
+			cell_mutation( new_cell );
 		} // End cell actions
 	}
 	if (gid == 0)
@@ -421,10 +421,8 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 		sim_stat->history_total_cells += step_new_cells;
 		num_cells_alive += step_new_cells;
 
-		printf("%d, %d, %d, -- %d, %d, %d, %d, %d, %d, %f\n", 
-			num_cells_alive,
-			step_new_cells,
-			step_dead_cells,
+		printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
+			num_cells_alive, step_new_cells, step_dead_cells,
 			sim_stat->history_total_cells, 
 			sim_stat->history_dead_cells, 
 			sim_stat->history_max_alive_cells, 
