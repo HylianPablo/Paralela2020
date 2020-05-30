@@ -290,6 +290,8 @@ __global__ void initCells(unsigned short *random_seqs_d)
 	my_cell->choose_mov[1] = PRECISION - my_cell->choose_mov[0] - my_cell->choose_mov[2];
 }
 
+__device__ void print_statusGPU( int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat );
+
 __global__ void step1()
 {
 	int gid = GLOBAL_ID;
@@ -396,7 +398,7 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 		if ( my_cell->age > 30 && my_cell->storage > ENERGY_NEEDED_TO_SPLIT ) {
 
 			// Split: Create new cell
-			int pos = atomicAdd(&step_new_cells, 1) + num_cells_alive - 1;
+			int pos = atomicAdd(&step_new_cells, 1) + num_cells_alive;
 
 			// Split energy stored and update age in both cells
 			my_cell->storage /= 2;
@@ -420,36 +422,37 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 			cell_mutation( new_cell );
 		} // End cell actions
 	}
-	if (gid == 0)
-	{
-		sim_stat->history_total_cells += step_new_cells;
-		num_cells_alive += step_new_cells;
 
-		/*printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
-			num_cells_alive, step_new_cells, step_dead_cells,
-			sim_stat->history_total_cells, 
-			sim_stat->history_dead_cells, 
-			sim_stat->history_max_alive_cells, 
-			sim_stat->history_max_new_cells, 
-			sim_stat->history_max_dead_cells, 
-			sim_stat->history_max_age,
-			(float)sim_stat->history_max_food / PRECISION
-		);
-		for (int i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
-		printf("\n");*/
-		printf("%d\n", num_cells_alive);
-		for (int i = 0; i < rows; i++)
+}
+
+__global__ void recount()
+{
+	sim_stat->history_total_cells += step_new_cells;
+	num_cells_alive += step_new_cells;
+
+	/*printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
+		num_cells_alive, step_new_cells, step_dead_cells,
+		sim_stat->history_total_cells, 
+		sim_stat->history_dead_cells, 
+		sim_stat->history_max_alive_cells, 
+		sim_stat->history_max_new_cells, 
+		sim_stat->history_max_dead_cells, 
+		sim_stat->history_max_age,
+		(float)sim_stat->history_max_food / PRECISION
+	);
+	/*for (int i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
+	printf("\n");
+	printf("%d\n", num_cells_alive);
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < columns; j++)
 		{
-			for (int j = 0; j < columns; j++)
-			{
-				if (culture_cells[i*columns + j] > 0) printf("*");
-				printf("%d ", culture[i*columns + j]);
-			}
-			printf("\n");
+			if (culture_cells[i*columns + j] > 0) printf("*");
+			printf("%d ", culture[i*columns + j]);
 		}
 		printf("\n");
 	}
-
+	printf("\n");*/
 }
 
 __global__ void step3()
@@ -494,20 +497,16 @@ __global__ void step4()
 
 		step_dead_cells = 0;
 		step_new_cells = 0;
+
+		print_statusGPU(rows, columns, culture, num_cells, cells, num_cells_alive, *sim_stat);
 	}
 }
 
-
-/*
- *
- * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
- *
- */
-
 /* 
- * Function: Print the current state of the simulation 
+ * Function: Print the current state of the simulation, with verbose information (exact storage and food)
+ *  Reconfigured to work in the GPU threads.
  */
-void print_status( int iter, int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
+__device__ void print_statusGPU( int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
 	/* 
 	 * You don't need to optimize this function, it is only for pretty printing and debugging purposes.
 	 * It is not compiled in the production versions of the program.
@@ -520,25 +519,29 @@ void print_status( int iter, int rows, int columns, int *culture, int num_cells,
 	printf("+\n");
 	for( i=0; i<rows; i++ ) {
 		printf("|");
-		for( j=0; j<columns; j++ ) {
-            char symbol;
-            if ( accessMat( culture, i, j ) >= 20 ) symbol = '+';
-            else if ( accessMat( culture, i, j ) >= 10 ) symbol = '*';
-            else if ( accessMat( culture, i, j ) >= 5 ) symbol = '.';
-            else symbol = ' ';
-
+		for (j = 0; j < columns; j++)
+        {
             int t;
             int counter = 0;
-            for( t=0; t<num_cells; t++ ) {
-                int row = (int)(cells[t].pos_row);
-                int col = (int)(cells[t].pos_col);
-                if ( cells[t].alive && row == i && col == j ) {
-                    counter ++;
+            int n = 0;
+            for (t = 0; t < num_cells; t++)
+            {
+                int row = (int)(cells[t].pos_row / PRECISION);
+                int col = (int)(cells[t].pos_col / PRECISION);
+                if (cells[t].alive && row == i && col == j)
+                {
+                	n++;
+                    counter += cells[t].storage;
                 }
             }
-            if ( counter > 9 ) printf("(M)" );
-            else if ( counter > 0 ) printf("(%1d)", counter );
-            else printf(" %c ", symbol );
+            if (counter > 0)
+            	if (n > 1)
+            		printf("(%06d)*", counter);
+            	else
+                	printf("(%06d)", counter);
+            else
+                printf(" %06d ", (accessMat(culture, i, j)));
+                //printf(" %c ", symbol);
         }
 		printf("|\n");
 	}
@@ -556,6 +559,68 @@ void print_status( int iter, int rows, int columns, int *culture, int num_cells,
 		(float)sim_stat.history_max_food / PRECISION
 	);
 }
+
+/*
+ *
+ * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
+ *
+ */
+
+#ifdef DEBUG
+/* 
+ * Function: Print the current state of the simulation 
+ */
+void print_status( int iteration, int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
+	/* 
+	 * You don't need to optimize this function, it is only for pretty printing and debugging purposes.
+	 * It is not compiled in the production versions of the program.
+	 * Thus, it is never used when measuring times in the leaderboard
+	 */
+	int i,j;
+
+	printf("Iteration: %d\n", iteration );
+	printf("+");
+	for( j=0; j<columns; j++ ) printf("---");
+	printf("+\n");
+	for( i=0; i<rows; i++ ) {
+		printf("|");
+		for( j=0; j<columns; j++ ) {
+			char symbol;
+			if ( accessMat( culture, i, j ) >= 20 * PRECISION ) symbol = '+';
+			else if ( accessMat( culture, i, j ) >= 10 * PRECISION ) symbol = '*';
+			else if ( accessMat( culture, i, j ) >= 5 * PRECISION ) symbol = '.';
+			else symbol = ' ';
+
+			int t;
+			int counter = 0;
+			for( t=0; t<num_cells; t++ ) {
+				int row = (int)(cells[t].pos_row / PRECISION);
+				int col = (int)(cells[t].pos_col / PRECISION);
+				if ( cells[t].alive && row == i && col == j ) {
+					counter ++;
+				}
+			}
+			if ( counter > 9 ) printf("(M)" );
+			else if ( counter > 0 ) printf("(%1d)", counter );
+			else printf(" %c ", symbol );
+		}
+		printf("|\n");
+	}
+	printf("+");
+	for( j=0; j<columns; j++ ) printf("---");
+	printf("+\n");
+	printf("Num_cells_alive: %04d\nHistory( Cells: %04d, Dead: %04d, Max.alive: %04d, Max.new: %04d, Max.dead: %04d, Max.age: %04d, Max.food: %6f )\n\n", 
+		num_cells_alive, 
+		sim_stat.history_total_cells, 
+		sim_stat.history_dead_cells, 
+		sim_stat.history_max_alive_cells, 
+		sim_stat.history_max_new_cells, 
+		sim_stat.history_max_dead_cells, 
+		sim_stat.history_max_age,
+		(float)sim_stat.history_max_food / PRECISION
+	);
+}
+#endif
 
 /*
  * Function: Print usage line in stderr
@@ -787,7 +852,7 @@ int main(int argc, char *argv[]) {
 	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		cudaCheckCall(cudaMemset(free_position, 0, sizeof(int)))
+		cudaCheckCall(cudaMemset(free_position, 0, sizeof(int)));
 
 		cudaCheckKernel((step1<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
 		cudaCheckKernel((cleanCells<<<BLOCK, THREADS>>>(free_position)));
@@ -805,10 +870,11 @@ int main(int argc, char *argv[]) {
 				food_to_place[i].pos += food_spot_col + int_urand48( food_spot_size_cols, food_spot_random_seq );
 				food_to_place[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
 			}
-			cudaCheckCall(cudaMemcpy(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)num_new_sources_spot, cudaMemcpyHostToDevice));
+			cudaCheckCall(cudaMemcpy(food_to_place_spot_d, food_to_place, sizeof(food_t) * (size_t)num_new_sources_spot, cudaMemcpyHostToDevice));
 		}
 
 		cudaCheckKernel((step2<<<BLOCK_F, THREADS>>>(food_to_place_d, num_new_sources, food_to_place_spot_d, num_new_sources_spot)));
+		cudaCheckKernel((recount<<<1, 1>>>()));
 		cudaCheckKernel((step3<<<BLOCK, THREADS>>>()));
 		cudaCheckKernel((step4<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
 

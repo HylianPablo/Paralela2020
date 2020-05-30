@@ -176,16 +176,9 @@ __global__ void reductionMax(int* array, int size, int *result)
 		atomicMax( result, buffer[0] );
 }
 
-
-/*
- *
- * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
- *
- */
-
-
 /* 
- * Function: Print the current state of the simulation 
+ * Function: Print the current state of the simulation, with verbose information (exact storage and food)
+ *  Reconfigured to work in the GPU threads.
  */
 void print_status( int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
 	/* 
@@ -200,33 +193,29 @@ void print_status( int rows, int columns, int *culture, int num_cells, Cell *cel
 	printf("+\n");
 	for( i=0; i<rows; i++ ) {
 		printf("|");
-		for( j=0; j<columns; j++ ) {
-            // char symbol;
-            // if (accessMat(culture, i, j) >= 20)
-            //     symbol = '+';
-            // else if (accessMat(culture, i, j) >= 10)
-            //     symbol = '*';
-            // else if (accessMat(culture, i, j) >= 5)
-            //     symbol = '.';
-            // else
-            //     symbol = ' ';
-
+		for (j = 0; j < columns; j++)
+        {
             int t;
             int counter = 0;
+            int n = 0;
             for (t = 0; t < num_cells; t++)
             {
                 int row = (int)(cells[t].pos_row / PRECISION);
                 int col = (int)(cells[t].pos_col / PRECISION);
                 if (cells[t].alive && row == i && col == j)
                 {
+                	n++;
                     counter += cells[t].storage;
                 }
             }
             if (counter > 0)
-                printf("(%06d)", counter);
+            	if (n > 1)
+            		printf("(%06d)*", counter);
+            	else
+                	printf("(%06d)", counter);
             else
-                //printf(" %c ", symbol);
                 printf(" %06d ", (accessMat(culture, i, j)));
+                //printf(" %c ", symbol);
         }
 		printf("|\n");
 	}
@@ -244,6 +233,15 @@ void print_status( int rows, int columns, int *culture, int num_cells, Cell *cel
 		(float)sim_stat.history_max_food / PRECISION
 	);
 }
+
+
+/*
+ *
+ * STOP HERE: DO NOT CHANGE THE CODE BELOW THIS POINT
+ *
+ */
+
+
 
 /*
  * Function: Print usage line in stderr
@@ -266,7 +264,7 @@ int main(int argc, char *argv[]) {
 	int max_iter;			// Maximum number of simulation steps
 	int rows, columns;		// Cultivation area sizes
 	int *culture;			// Cultivation area values
-	short *culture_cells;		// Ancillary structure to count the number of cells in a culture space
+	int *culture_cells;		// Ancillary structure to count the number of cells in a culture space
 
 	float max_food;			// Maximum level of food on any position
 	float food_density;		// Number of food sources introduced per step
@@ -407,7 +405,7 @@ int main(int argc, char *argv[]) {
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
-	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
+	culture_cells = (int *)malloc( sizeof(int) * (size_t)rows * (size_t)columns );
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
@@ -611,8 +609,8 @@ int main(int argc, char *argv[]) {
 			sim_stat.history_max_age,
 			(float)sim_stat.history_max_food / PRECISION
 		);
-		for (i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
-		printf("\n");*/
+		/*for (i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
+		printf("\n");
 		printf("%d\n", num_cells_alive);
 		for (i = 0; i < rows; i++)
 		{
@@ -623,7 +621,7 @@ int main(int argc, char *argv[]) {
 			}
 			printf("\n");
 		}
-		printf("\n");
+		printf("\n");*/
 
 		/* 4.5. Clean ancillary data structures */
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
@@ -681,9 +679,11 @@ int main(int argc, char *argv[]) {
 		// Statistics: Max alive cells per step
 		if ( num_cells_alive > sim_stat.history_max_alive_cells ) sim_stat.history_max_alive_cells = num_cells_alive;
 
+		print_status(rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
+
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
-		print_status( rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
+		//print_status( rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
 	}
 
