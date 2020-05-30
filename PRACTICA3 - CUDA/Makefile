@@ -8,14 +8,14 @@ CC=nvcc
 evolution: evolution.cu *.h
 	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
 
-dev: evolution.cu *.h
-	$(CC) $(CFLAGS_TEST) $< -o $@ $(LIBS)
-
 debug: evolution.cu *.h
 	$(CC) $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
 
 original: original.cu *.h
 	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
+
+odebug: original.cu *.h
+	$(CC) $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
 
 tgz:
 	tar -czf evolution_cuda.tgz Makefile evolution.cu *.h

@@ -220,7 +220,7 @@ typedef struct {
  * Maximum of two or three values
  *
  */
-#define max(x, y) x > y ? x : y
+#define max(x, y) (x > y ? x : y)
 #define max3(x, y, z) max(max(x, y), z)
 
 /*
@@ -295,7 +295,6 @@ __global__ void step1()
 	int gid = GLOBAL_ID;
 
 	Cell *my_cell = &cells[gid];
-	int *ages = (int *)malloc(sizeof(int) * num_cells);
 
 	/* 4.3. Cell movements */
 	if (gid < num_cells)
@@ -368,8 +367,8 @@ __global__ void cleanCells(int *free_position)
 				cells[pos] = *my_cell;
 			}
 		}
+		if (gid == 0) num_cells_alive -= step_dead_cells;
 	}
-	if (gid == 0) num_cells_alive -= step_dead_cells;
 }
 
 __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_food_spot)
@@ -378,22 +377,24 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 
 	Cell *my_cell = &cells[gid];
 
-	if (gid < num_food)	atomicAdd(&culture[food[gid].pos], food[gid].food);
+	if (gid < num_food)	
+	{
+		atomicAdd(&culture[food[gid].pos], food[gid].food);
+	}
 	if (gid < num_food_spot) atomicAdd(&culture[food_spot[gid].pos], food_spot[gid].food);
 
 	/* 4.4.1. Food harvesting */
-	if (gid < num_cells - step_dead_cells)
+	if (gid < num_cells_alive)
 	{
 		int food = accessMat( culture, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION );
 		int count = accessMat( culture_cells, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION );
 		int my_food = food / count;
 		my_cell->storage += my_food;
-		if(gid==0){
-			printf("%d\n",food);
-		}
+
 
 		/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
 		if ( my_cell->age > 30 && my_cell->storage > ENERGY_NEEDED_TO_SPLIT ) {
+
 			// Split: Create new cell
 			int pos = atomicAdd(&step_new_cells, 1) + num_cells_alive - 1;
 
@@ -419,12 +420,12 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 			cell_mutation( new_cell );
 		} // End cell actions
 	}
-	if (false)
+	if (gid == 0)
 	{
 		sim_stat->history_total_cells += step_new_cells;
 		num_cells_alive += step_new_cells;
 
-		printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
+		/*printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
 			num_cells_alive, step_new_cells, step_dead_cells,
 			sim_stat->history_total_cells, 
 			sim_stat->history_dead_cells, 
@@ -433,7 +434,7 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 			sim_stat->history_max_dead_cells, 
 			sim_stat->history_max_age,
 			(float)sim_stat->history_max_food / PRECISION
-		);
+		);*/
 	}
 
 }
@@ -444,15 +445,15 @@ __global__ void step3()
 
 	/* 4.5. Clean ancillary data structures */
 	/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
-	if (gid < num_cells)  //probablemente aquí (quitado resta dead_cells)
+	if (gid < num_cells_alive)
 	{
-		accessMat( culture, cells[gid].pos_row / PRECISION, cells[gid].pos_col / PRECISION ) = 0;
+		atomicExch(&accessMat( culture, cells[gid].pos_row / PRECISION, cells[gid].pos_col / PRECISION ), 0);
 	}
 
 	/* 4.8. Decrease non-harvested food */
 	if (gid < rows*columns)
 	{
-		culture[gid] -= culture[gid] / 20;
+		atomicAdd(&culture[gid], -culture[gid] / 20);
 		/* 4.2. Prepare ancillary data structures */	
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
 		culture_cells[gid] = 0;
@@ -485,12 +486,10 @@ __global__ void step3()
  *
  */
 
-
-#ifdef DEBUG
 /* 
  * Function: Print the current state of the simulation 
  */
-void print_status( int iteration, int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
+void print_status( int iter, int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
 	/* 
 	 * You don't need to optimize this function, it is only for pretty printing and debugging purposes.
 	 * It is not compiled in the production versions of the program.
@@ -498,32 +497,31 @@ void print_status( int iteration, int rows, int columns, int *culture, int num_c
 	 */
 	int i,j;
 
-	printf("Iteration: %d\n", iteration );
 	printf("+");
 	for( j=0; j<columns; j++ ) printf("---");
 	printf("+\n");
 	for( i=0; i<rows; i++ ) {
 		printf("|");
 		for( j=0; j<columns; j++ ) {
-			char symbol;
-			if ( accessMat( culture, i, j ) >= 20 * PRECISION ) symbol = '+';
-			else if ( accessMat( culture, i, j ) >= 10 * PRECISION ) symbol = '*';
-			else if ( accessMat( culture, i, j ) >= 5 * PRECISION ) symbol = '.';
-			else symbol = ' ';
+            char symbol;
+            if ( accessMat( culture, i, j ) >= 20 ) symbol = '+';
+            else if ( accessMat( culture, i, j ) >= 10 ) symbol = '*';
+            else if ( accessMat( culture, i, j ) >= 5 ) symbol = '.';
+            else symbol = ' ';
 
-			int t;
-			int counter = 0;
-			for( t=0; t<num_cells; t++ ) {
-				int row = (int)(cells[t].pos_row / PRECISION);
-				int col = (int)(cells[t].pos_col / PRECISION);
-				if ( cells[t].alive && row == i && col == j ) {
-					counter ++;
-				}
-			}
-			if ( counter > 9 ) printf("(M)" );
-			else if ( counter > 0 ) printf("(%1d)", counter );
-			else printf(" %c ", symbol );
-		}
+            int t;
+            int counter = 0;
+            for( t=0; t<num_cells; t++ ) {
+                int row = (int)(cells[t].pos_row);
+                int col = (int)(cells[t].pos_col);
+                if ( cells[t].alive && row == i && col == j ) {
+                    counter ++;
+                }
+            }
+            if ( counter > 9 ) printf("(M)" );
+            else if ( counter > 0 ) printf("(%1d)", counter );
+            else printf(" %c ", symbol );
+        }
 		printf("|\n");
 	}
 	printf("+");
@@ -540,7 +538,6 @@ void print_status( int iteration, int rows, int columns, int *culture, int num_c
 		(float)sim_stat.history_max_food / PRECISION
 	);
 }
-#endif
 
 /*
  * Function: Print usage line in stderr
@@ -716,8 +713,9 @@ int main(int argc, char *argv[]) {
  *
  */
 #define THREADS 1024
-#define BLOCK (max(rows*columns, num_cells))/THREADS + 1
-#define BLOCK_F (max3(rows*columns, num_cells, max_new_sources))/THREADS + 1
+#define BLOCK (max(rows*columns, num_cells)/THREADS + 1)
+#define BLOCK_F (max3(rows*columns, num_cells, max_new_sources)/THREADS + 1)
+
 
 	/* 3. Initialize culture surface and initial cells */
 	culture = NULL;

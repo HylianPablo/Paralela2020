@@ -184,11 +184,10 @@ __global__ void reductionMax(int* array, int size, int *result)
  */
 
 
-#ifdef DEBUG
 /* 
  * Function: Print the current state of the simulation 
  */
-void print_status( int iteration, int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
+void print_status( int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
 	/* 
 	 * You don't need to optimize this function, it is only for pretty printing and debugging purposes.
 	 * It is not compiled in the production versions of the program.
@@ -196,32 +195,39 @@ void print_status( int iteration, int rows, int columns, int *culture, int num_c
 	 */
 	int i,j;
 
-	printf("Iteration: %d\n", iteration );
 	printf("+");
 	for( j=0; j<columns; j++ ) printf("---");
 	printf("+\n");
 	for( i=0; i<rows; i++ ) {
 		printf("|");
 		for( j=0; j<columns; j++ ) {
-			char symbol;
-			if ( accessMat( culture, i, j ) >= 20 * PRECISION ) symbol = '+';
-			else if ( accessMat( culture, i, j ) >= 10 * PRECISION ) symbol = '*';
-			else if ( accessMat( culture, i, j ) >= 5 * PRECISION ) symbol = '.';
-			else symbol = ' ';
+            // char symbol;
+            // if (accessMat(culture, i, j) >= 20)
+            //     symbol = '+';
+            // else if (accessMat(culture, i, j) >= 10)
+            //     symbol = '*';
+            // else if (accessMat(culture, i, j) >= 5)
+            //     symbol = '.';
+            // else
+            //     symbol = ' ';
 
-			int t;
-			int counter = 0;
-			for( t=0; t<num_cells; t++ ) {
-				int row = (int)(cells[t].pos_row / PRECISION);
-				int col = (int)(cells[t].pos_col / PRECISION);
-				if ( cells[t].alive && row == i && col == j ) {
-					counter ++;
-				}
-			}
-			if ( counter > 9 ) printf("(M)" );
-			else if ( counter > 0 ) printf("(%1d)", counter );
-			else printf(" %c ", symbol );
-		}
+            int t;
+            int counter = 0;
+            for (t = 0; t < num_cells; t++)
+            {
+                int row = (int)(cells[t].pos_row / PRECISION);
+                int col = (int)(cells[t].pos_col / PRECISION);
+                if (cells[t].alive && row == i && col == j)
+                {
+                    counter += cells[t].storage;
+                }
+            }
+            if (counter > 0)
+                printf("(%06d)", counter);
+            else
+                //printf(" %c ", symbol);
+                printf(" %06d ", (accessMat(culture, i, j)));
+        }
 		printf("|\n");
 	}
 	printf("+");
@@ -238,7 +244,6 @@ void print_status( int iteration, int rows, int columns, int *culture, int num_c
 		(float)sim_stat.history_max_food / PRECISION
 	);
 }
-#endif
 
 /*
  * Function: Print usage line in stderr
@@ -461,7 +466,7 @@ int main(int argc, char *argv[]) {
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		int num_new_sources = (int)(rows * columns * food_density);
+		int num_new_sources = (int)(rows * columns * food_density);			
 		for (i=0; i<num_new_sources; i++) {
 			int row = int_urand48( rows, food_random_seq );
 			int col = int_urand48( columns, food_random_seq );
@@ -594,8 +599,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		} // End cell actions
-
-		printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
+		/*printf("%d, %d, %d -- %d, %d, %d, %d, %d, %d, %f\n", 
 			num_cells_alive,
 			step_new_cells,
 			step_dead_cells,
@@ -606,7 +610,7 @@ int main(int argc, char *argv[]) {
 			sim_stat.history_max_dead_cells, 
 			sim_stat.history_max_age,
 			(float)sim_stat.history_max_food / PRECISION
-		);
+		);*/
 
 		/* 4.5. Clean ancillary data structures */
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
@@ -666,7 +670,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
-		print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
+		print_status( rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
 	}
 
