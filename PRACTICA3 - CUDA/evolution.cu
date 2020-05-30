@@ -235,20 +235,22 @@ __device__ int num_cells = 0;
 __device__ int *culture = NULL;
 __device__ int *culture_cells = NULL;
 __device__ Cell *cells = NULL;
+__device__ Cell *cells_aux = NULL;
 __device__ Statistics *sim_stat;
 __device__ int num_cells_alive = 0;
 __device__ int step_dead_cells = 0;
 __device__ int step_new_cells = 0;
 
 
-__global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int columns_d, Cell *cells_d, int num_cells_d, Statistics *stats)
+__global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int columns_d, Cell *cells_d1, Cell *cells_d2, int num_cells_d, Statistics *stats)
 {
 	rows = rows_d;
 	columns = columns_d;
 	num_cells = num_cells_d;
 	culture = culture_d;
 	culture_cells = culture_cells_d;
-	cells = cells_d;
+	cells = cells_d1;
+	cells_aux = cells_d2;
 
 	num_cells_alive = num_cells;
 
@@ -359,17 +361,23 @@ __global__ void cleanCells(int *free_position)
 {
 	int gid = GLOBAL_ID;
 
-	Cell *my_cell = &cells[gid];
-
 	if (step_dead_cells > 0 && gid < num_cells)
 	{
+		Cell *my_cell = &cells[gid];
 		if ( my_cell->alive ) {
-			int pos = atomicAdd(free_position, 1);
-			if ( pos != gid ) {
-				cells[pos] = *my_cell;
-			}
+			cells_aux[atomicAdd(free_position, 1)] = *my_cell;
 		}
 		if (gid == 0) num_cells_alive -= step_dead_cells;
+	}
+}
+
+__global__ void swapCellList()
+{
+	if (step_dead_cells > 0)
+	{
+		Cell *tmp = cells;
+		cells = cells_aux;
+		cells_aux = tmp;
 	}
 }
 
@@ -439,11 +447,11 @@ __global__ void recount()
 		sim_stat->history_max_dead_cells, 
 		sim_stat->history_max_age,
 		(float)sim_stat->history_max_food / PRECISION
-	);
-	/*for (int i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
+	);*/
+	for (int i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
 	printf("\n");
 	printf("%d\n", num_cells_alive);
-	for (int i = 0; i < rows; i++)
+	/*for (int i = 0; i < rows; i++)
 	{
 		for (int j = 0; j < columns; j++)
 		{
@@ -498,7 +506,7 @@ __global__ void step4()
 		step_dead_cells = 0;
 		step_new_cells = 0;
 
-		print_statusGPU(rows, columns, culture, num_cells, cells, num_cells_alive, *sim_stat);
+		//print_statusGPU(rows, columns, culture, num_cells, cells, num_cells_alive, *sim_stat);
 	}
 }
 
@@ -536,7 +544,7 @@ __device__ void print_statusGPU( int rows, int columns, int *culture, int num_ce
             }
             if (counter > 0)
             	if (n > 1)
-            		printf("(%06d)*", counter);
+            		printf("(%06d)%d", counter, n);
             	else
                 	printf("(%06d)", counter);
             else
@@ -796,8 +804,10 @@ int main(int argc, char *argv[]) {
  *
  */
 #define THREADS 1024
-#define BLOCK (max(rows*columns, num_cells)/THREADS + 1)
-#define BLOCK_F (max3(rows*columns, num_cells, max_new_sources)/THREADS + 1)
+#define BLOCK (max(rows*columns, num_cells_alive)/THREADS + 1)
+#define BLOCK_F (max3(rows*columns, num_cells_alive, max_new_sources)/THREADS + 1)
+#define BLOCK_C (num_cells_alive)/ THREADS + 1
+#define BLOCK_P (rows*columns)/THREADS + 1
 
 
 	/* 3. Initialize culture surface and initial cells */
@@ -823,20 +833,21 @@ int main(int argc, char *argv[]) {
 
 	cudaCheckCall(cudaMemcpy(random_seqs_d, random_seqs, sizeof(unsigned short) * 3 * num_cells, cudaMemcpyHostToDevice));
 
+	int num_cells_alive = num_cells;
 
-	Cell *cells_d;
-	cudaCheckCall(cudaMalloc(&cells_d, (size_t) (1l << 32)));
+	Cell *cells_d1;
+	cudaCheckCall(cudaMalloc(&cells_d1, (size_t) (1l << 31)));
+	Cell *cells_d2;
+	cudaCheckCall(cudaMalloc(&cells_d2, (size_t) (1l << 31)));
 	Statistics *stats_d;
 	cudaCheckCall(cudaMalloc(&stats_d, sizeof(Statistics)));
 	int *free_position;
 	cudaCheckCall(cudaMalloc(&free_position, sizeof(int)))
 
-	initGPU<<<1, 1>>>(culture_d, culture_cells_d, rows, columns, cells_d, num_cells, stats_d);
-	initCells<<<BLOCK, THREADS>>>(random_seqs_d);
+	initGPU<<<1, 1>>>(culture_d, culture_cells_d, rows, columns, cells_d1, cells_d2, num_cells, stats_d);
+	initCells<<<BLOCK_C, THREADS>>>(random_seqs_d);
 
 	/* 4. Simulation */
-	int current_max_food = 0;
-	int num_cells_alive = num_cells;
 	int iter;
 	int max_food_int = max_food * PRECISION;
 
@@ -849,18 +860,20 @@ int main(int argc, char *argv[]) {
 	cudaCheckCall(cudaMalloc(&food_to_place_d, sizeof(food_t) * (size_t)num_new_sources));
 	cudaCheckCall(cudaMalloc(&food_to_place_spot_d, sizeof(food_t) * (size_t)num_new_sources_spot));
 
-	for( iter=0; iter<max_iter && current_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
+	for( iter=0; iter<max_iter && sim_stat.history_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
 		cudaCheckCall(cudaMemset(free_position, 0, sizeof(int)));
 
-		cudaCheckKernel((step1<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
-		cudaCheckKernel((cleanCells<<<BLOCK, THREADS>>>(free_position)));
+		cudaCheckKernel((step1<<<BLOCK_C, THREADS, sizeof(int) * THREADS>>>()));
+		cudaCheckKernel((cleanCells<<<BLOCK_C, THREADS>>>(free_position)));
+		cudaCheckKernel((swapCellList<<<1, 1>>>()));
 
 		for (i=0; i<num_new_sources; i++) {
 			food_to_place[i].pos = int_urand48( rows, food_random_seq )*columns;
 			food_to_place[i].pos += int_urand48( columns, food_random_seq );
 			food_to_place[i].food = int_urand48( food_level * PRECISION, food_random_seq );
+
 		}
 		cudaCheckCall(cudaMemcpy(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)num_new_sources, cudaMemcpyHostToDevice));
 		// In the special food spot
@@ -875,8 +888,8 @@ int main(int argc, char *argv[]) {
 
 		cudaCheckKernel((step2<<<BLOCK_F, THREADS>>>(food_to_place_d, num_new_sources, food_to_place_spot_d, num_new_sources_spot)));
 		cudaCheckKernel((recount<<<1, 1>>>()));
-		cudaCheckKernel((step3<<<BLOCK, THREADS>>>()));
-		cudaCheckKernel((step4<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
+		cudaCheckKernel((step3<<<2*BLOCK_C, THREADS>>>()));
+		cudaCheckKernel((step4<<<BLOCK_P, THREADS, sizeof(int) * THREADS>>>()));
 
 		Statistics prev_stats = sim_stat;		
 		cudaCheckCall((cudaMemcpy(&sim_stat, stats_d, sizeof(Statistics), cudaMemcpyDeviceToHost)));
@@ -886,7 +899,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
-		print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
+		//print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
 	}
 	

@@ -210,7 +210,7 @@ void print_status( int rows, int columns, int *culture, int num_cells, Cell *cel
             }
             if (counter > 0)
             	if (n > 1)
-            		printf("(%06d)*", counter);
+            		printf("(%06d)%d", counter, n);
             	else
                 	printf("(%06d)", counter);
             else
@@ -608,11 +608,11 @@ int main(int argc, char *argv[]) {
 			sim_stat.history_max_dead_cells, 
 			sim_stat.history_max_age,
 			(float)sim_stat.history_max_food / PRECISION
-		);
-		/*for (i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
+		);*/
+		for (i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
 		printf("\n");
 		printf("%d\n", num_cells_alive);
-		for (i = 0; i < rows; i++)
+		/*for (i = 0; i < rows; i++)
 		{
 			for (j = 0; j < columns; j++)
 			{
@@ -679,7 +679,7 @@ int main(int argc, char *argv[]) {
 		// Statistics: Max alive cells per step
 		if ( num_cells_alive > sim_stat.history_max_alive_cells ) sim_stat.history_max_alive_cells = num_cells_alive;
 
-		print_status(rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
+		//print_status(rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat);
 
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
