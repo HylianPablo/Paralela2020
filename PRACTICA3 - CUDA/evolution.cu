@@ -343,10 +343,10 @@ __global__ void step1()
 				if ( my_cell->pos_col < 0 ) my_cell->pos_col += columns * PRECISION;
 				if ( my_cell->pos_col >= columns * PRECISION) my_cell->pos_col -= columns * PRECISION;
 			}
+			/* 4.3.4. Annotate that there is one more cell in this culture position */
+			atomicAdd(&accessMat( culture_cells, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION ), 1);
 		}
 
-		/* 4.3.4. Annotate that there is one more cell in this culture position */
-		atomicAdd(&accessMat( culture_cells, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION ), 1);
 	} // End cell movements
 
 	// Statistics: Max age of a cell in the simulation history
@@ -434,7 +434,20 @@ __global__ void step2(food_t *food, int num_food, food_t *food_spot, int num_foo
 			sim_stat->history_max_dead_cells, 
 			sim_stat->history_max_age,
 			(float)sim_stat->history_max_food / PRECISION
-		);*/
+		);
+		for (int i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
+		printf("\n");*/
+		printf("%d\n", num_cells_alive);
+		for (int i = 0; i < rows; i++)
+		{
+			for (int j = 0; j < columns; j++)
+			{
+				if (culture_cells[i*columns + j] > 0) printf("*");
+				printf("%d ", culture[i*columns + j]);
+			}
+			printf("\n");
+		}
+		printf("\n");
 	}
 
 }
@@ -447,13 +460,18 @@ __global__ void step3()
 	/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
 	if (gid < num_cells_alive)
 	{
-		atomicExch(&accessMat( culture, cells[gid].pos_row / PRECISION, cells[gid].pos_col / PRECISION ), 0);
+		accessMat( culture, cells[gid].pos_row / PRECISION, cells[gid].pos_col / PRECISION ) = 0;
 	}
+}
+
+__global__ void step4()
+{
+	int gid = GLOBAL_ID;
 
 	/* 4.8. Decrease non-harvested food */
 	if (gid < rows*columns)
 	{
-		atomicAdd(&culture[gid], -culture[gid] / 20);
+		culture[gid] -= culture[gid] / 20;
 		/* 4.2. Prepare ancillary data structures */	
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
 		culture_cells[gid] = 0;
@@ -791,7 +809,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		cudaCheckKernel((step2<<<BLOCK_F, THREADS>>>(food_to_place_d, num_new_sources, food_to_place_spot_d, num_new_sources_spot)));
-		cudaCheckKernel((step3<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
+		cudaCheckKernel((step3<<<BLOCK, THREADS>>>()));
+		cudaCheckKernel((step4<<<BLOCK, THREADS, sizeof(int) * THREADS>>>()));
 
 		Statistics prev_stats = sim_stat;		
 		cudaCheckCall((cudaMemcpy(&sim_stat, stats_d, sizeof(Statistics), cudaMemcpyDeviceToHost)));

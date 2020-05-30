@@ -610,7 +610,20 @@ int main(int argc, char *argv[]) {
 			sim_stat.history_max_dead_cells, 
 			sim_stat.history_max_age,
 			(float)sim_stat.history_max_food / PRECISION
-		);*/
+		);
+		for (i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
+		printf("\n");*/
+		printf("%d\n", num_cells_alive);
+		for (i = 0; i < rows; i++)
+		{
+			for (j = 0; j < columns; j++)
+			{
+				if (culture_cells[i*columns + j] > 0) printf("*");
+				printf("%d ", culture[i*columns + j]);
+			}
+			printf("\n");
+		}
+		printf("\n");
 
 		/* 4.5. Clean ancillary data structures */
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
