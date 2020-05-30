@@ -5,7 +5,7 @@ CFLAGS_TEST= -I. -O3 -DCUDA_CHECK -DDEVELOPMENT --compiler-options -Wall
 LIBS=
 CC=nvcc
 
-evolution: evolution.cu *.h
+evolution: miPanaMiguel.cu *.h
 	$(CC) $(CFLAGS) $< -o $@ $(LIBS)
 
 debug: evolution.cu *.h
@@ -18,7 +18,7 @@ odebug: original.cu *.h
 	$(CC) $(CFLAGS_DEBUG) -DDEBUG $< -o $@ $(LIBS)
 
 tgz:
-	tar -czf evolution_cuda.tgz Makefile evolution.cu *.h
+	tar -czf evolution_cuda.tgz Makefile miPanaMiguel.cu *.h
 
 clean:
 	rm -f evolution debug original

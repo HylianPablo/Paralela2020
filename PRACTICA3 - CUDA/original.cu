@@ -565,6 +565,7 @@ int main(int argc, char *argv[]) {
 				int count = accessMat( culture_cells, cells[i].pos_row / PRECISION, cells[i].pos_col / PRECISION );
 				int my_food = food / count;	
 				cells[i].storage += my_food;
+				//printf("%d %d %d %d %d %d\n", i, cells[i].pos_row, cells[i].pos_col, food, count, my_food);
 
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
 				if ( cells[i].age > 30 && cells[i].storage > ENERGY_NEEDED_TO_SPLIT ) {
@@ -609,9 +610,9 @@ int main(int argc, char *argv[]) {
 			sim_stat.history_max_age,
 			(float)sim_stat.history_max_food / PRECISION
 		);*/
-		for (i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
+		/*for (i = 0; i < num_cells_alive; i++) printf("%d %d; ", i, cells[i].storage);
 		printf("\n");
-		printf("%d\n", num_cells_alive);
+		printf("%d\n", num_cells_alive);*/
 		/*for (i = 0; i < rows; i++)
 		{
 			for (j = 0; j < columns; j++)
