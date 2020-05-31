@@ -21,5 +21,5 @@ tgz:
 	tar -czf evolution_cuda.tgz Makefile miPanaMiguel.cu *.h
 
 clean:
-	rm -f evolution debug original
+	rm -f evolution debug original odebug
 
