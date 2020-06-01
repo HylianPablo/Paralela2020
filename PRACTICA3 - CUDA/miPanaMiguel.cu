@@ -246,12 +246,13 @@ __device__ Statistics *sim_stat;
 __device__ int num_cells_alive = 0;
 __device__ int step_dead_cells = 0;
 __device__ int step_new_cells = 0;
+__device__ int *free_position = NULL;
 
 /*
  * Initialize global device variables.
  *
  */
-__global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int columns_d, Cell *cells_d1, Cell *cells_d2, int num_cells_d, Statistics *stats)
+__global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int columns_d, Cell *cells_d1, Cell *cells_d2, int num_cells_d, Statistics *stats, int *free_position_d)
 {
 	rows = rows_d;
 	columns = columns_d;
@@ -272,6 +273,9 @@ __global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int co
 	sim_stat->history_max_dead_cells = 0;
 	sim_stat->history_max_age = 0;
 	sim_stat->history_max_food = 0.0f;
+
+	free_position = free_position_d;
+	*free_position = 0;
 }
 
 /*
@@ -380,7 +384,7 @@ __global__ void step1()
  * Function to clean dead cells from the list of cells.
  *
  */
-__global__ void cleanCells(int *free_position)
+__global__ void cleanCells()
 {
 	int gid = GLOBAL_ID;
 
@@ -398,7 +402,7 @@ __global__ void cleanCells(int *free_position)
  * Function to place the randomly-generated in the host food on the
  * device culture structure.
  */
-__global__ void placeFood(food_t *food, int num_food, food_t *food_spot, int num_food_spot)
+__global__ void placeFood(food_t *food, int num_food)
 {
 	int gid = GLOBAL_ID;
 
@@ -410,7 +414,6 @@ __global__ void placeFood(food_t *food, int num_food, food_t *food_spot, int num
 	}
 
 	if (gid < num_food) atomicAdd(&culture[food[gid].pos], food[gid].food);
-	if (gid < num_food_spot) atomicAdd(&culture[food_spot[gid].pos], food_spot[gid].food);
 }
 
 /*
@@ -463,17 +466,52 @@ __global__ void step2()
 }
 
 /*
- * Function to correctly recount cells, on one thread.
+ * Function to correctly recount cells and statistics, on one thread.
  *
  */
 __global__ void recount()
 {
 	// Hello there, Yuri!
-	asm("add.s32 %0, %2, %4;\n\t"
-		"add.s32 %1, %3, %4;"
-		: "=r"(num_cells_alive), "=r"(sim_stat->history_total_cells)
-		: "r"(num_cells_alive), "r"(sim_stat->history_total_cells), "r"(step_new_cells)
+	asm(
+		"add.s32	%0, %1, %2;"
+		: "=r"(num_cells_alive)
+		: "r"(num_cells_alive),
+		  "r"(step_new_cells)
 	);
+	asm(
+		"add.s32	%0, %6, %5;\n\t"
+		"max.s32	%1, %7, %5;\n\t"
+		"add.s32	%2, %9, %8;\n\t"
+		"max.s32	%3, %10, %8;\n\t"
+		"max.s32	%4, %12, %11;"
+		: "=r"(sim_stat->history_total_cells),
+		  "=r"(sim_stat->history_max_new_cells),
+		  "=r"(sim_stat->history_dead_cells),
+		  "=r"(sim_stat->history_max_dead_cells),
+		  "=r"(sim_stat->history_max_alive_cells)
+		: "r"(step_new_cells),
+		  "r"(sim_stat->history_total_cells),
+		  "r"(sim_stat->history_max_new_cells),
+		  "r"(step_dead_cells),
+		  "r"(sim_stat->history_dead_cells),
+		  "r"(sim_stat->history_max_dead_cells),
+		  "r"(num_cells_alive),
+		  "r"(sim_stat->history_max_alive_cells)
+	);
+	asm(
+		"mov.s32	%0, 0;\n\t"
+		"mov.s32	%1, 0;\n\t"
+		"mov.s32	%2,	0;"
+		: "=r"(step_dead_cells),
+		  "=r"(step_new_cells),
+		  "=r"(free_position[0])
+	);
+	asm(
+		"mov.s32	%0, %1;"
+		: "=r"(num_cells)
+		: "r"(num_cells_alive)
+	);
+	// Not gonna lie, we couldn't make it to work in just one asm() call.
 }
 
 /*
@@ -494,7 +532,7 @@ __global__ void step3()
 
 /*
  * Food decrease and statistics update.
- *  Sections 4.8 and 4.9 of the simulation.
+ *  Section 4.8 of the simulation.
  */
 __global__ void step4()
 {
@@ -510,28 +548,14 @@ __global__ void step4()
 	}
 	reductionMax(culture, rows*columns, &sim_stat->history_max_food);
 
-	/* 4.9. Statistics */
-	if (gid == 0)
-	{
-		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		num_cells = num_cells_alive;
-
-		// Statistics: Max new cells per step
-		sim_stat->history_max_new_cells = max(sim_stat->history_max_new_cells, step_new_cells);
-		// Statistics: Accumulated dead and Max dead cells per step
-		sim_stat->history_dead_cells += step_dead_cells;
-		sim_stat->history_max_dead_cells = max(sim_stat->history_max_dead_cells, step_dead_cells);
-		// Statistics: Max alive cells per step
-		sim_stat->history_max_alive_cells = max(sim_stat->history_max_alive_cells, num_cells_alive);
-
-		step_dead_cells = 0;
-		step_new_cells = 0;
 
 #ifdef DEBUG
+	if (gid == 0)
+	{
 		/* In case someone wants to print the debug information for each iteration, this is the place. */
 		//print_statusGPU(rows, columns, culture, num_cells, cells, num_cells_alive, *sim_stat);
-#endif // DEBUG
 	}
+#endif // DEBUG
 }
 
 #ifdef DEBUG
@@ -850,7 +874,8 @@ int main(int argc, char *argv[]) {
 	cudaMemset(culture_cells_d, 0, sizeof(int) * (size_t)rows * (size_t)columns);
 
 	/* Copy random cell seeds to device */
-	unsigned short *random_seqs = (unsigned short *)malloc(sizeof(unsigned short) * 3 * num_cells);
+	unsigned short *random_seqs;
+	cudaCheckCall(cudaMallocHost(&random_seqs, sizeof(unsigned short) * 3 * num_cells));
 	unsigned short *random_seqs_d;
 	cudaCheckCall(cudaMalloc(&random_seqs_d, sizeof(unsigned short) * 3 * num_cells));
 
@@ -873,10 +898,10 @@ int main(int argc, char *argv[]) {
 	cudaCheckCall(cudaMalloc(&stats_d, sizeof(Statistics)));
 	/* Device auxiliary free_position for cell_list */
 	int *free_position;
-	cudaCheckCall(cudaMalloc(&free_position, sizeof(int)))
+	cudaCheckCall(cudaMalloc(&free_position, sizeof(int)));
 
 	/* Device intialization */
-	initGPU<<<1, 1>>>(culture_d, culture_cells_d, rows, columns, cells_d1, cells_d2, num_cells, stats_d);
+	initGPU<<<1, 1>>>(culture_d, culture_cells_d, rows, columns, cells_d1, cells_d2, num_cells, stats_d, free_position);
 	initCells<<<BLOCK_C, THREADS>>>(random_seqs_d);
 
 	/* 4. Simulation */
@@ -886,39 +911,37 @@ int main(int argc, char *argv[]) {
 	/* Food generation and placement variables and structures */
 	int num_new_sources = (int)(rows * columns * food_density);
 	int	num_new_sources_spot = food_spot_active ? (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density) : 0;
-	int max_new_sources = max(num_new_sources, num_new_sources_spot);
-	food_t *food_to_place = (food_t *)malloc(sizeof(food_t) * (size_t)max_new_sources);
-	food_t *food_to_place_d, *food_to_place_spot_d;
-	cudaCheckCall(cudaMalloc(&food_to_place_d, sizeof(food_t) * (size_t)num_new_sources));
-	cudaCheckCall(cudaMalloc(&food_to_place_spot_d, sizeof(food_t) * (size_t)num_new_sources_spot));
+	int max_new_sources = num_new_sources + num_new_sources_spot;
+	food_t *food_to_place;
+	cudaCheckCall(cudaMallocHost(&food_to_place, sizeof(food_t) * (size_t)max_new_sources));
+	food_t *food_to_place_d;
+	cudaCheckCall(cudaMalloc(&food_to_place_d, sizeof(food_t) * (size_t)max_new_sources));
 
 	for( iter=0; iter<max_iter && sim_stat.history_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
 		/* Set the free position to the first position */
-		cudaCheckCall(cudaMemset(free_position, 0, sizeof(int)));
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
 		cudaCheckKernel((step1<<<BLOCK_C, THREADS, sizeof(int) * THREADS>>>()));
-		cudaCheckKernel((cleanCells<<<BLOCK_C, THREADS>>>(free_position)));
+		cudaCheckKernel((cleanCells<<<BLOCK_C, THREADS>>>()));
 
 		for (i=0; i<num_new_sources; i++) {
 			food_to_place[i].pos = int_urand48( rows, food_random_seq )*columns;
 			food_to_place[i].pos += int_urand48( columns, food_random_seq );
 			food_to_place[i].food = int_urand48( food_level * PRECISION, food_random_seq );
 		}
-		cudaCheckCall(cudaMemcpy(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)num_new_sources, cudaMemcpyHostToDevice));
 		// In the special food spot
 		if ( food_spot_active ) {
-			for (i=0; i<num_new_sources_spot; i++) {
+			for (; i<max_new_sources; i++) {
 				food_to_place[i].pos = (food_spot_row + int_urand48( food_spot_size_rows, food_spot_random_seq ))*columns;
 				food_to_place[i].pos += food_spot_col + int_urand48( food_spot_size_cols, food_spot_random_seq );
 				food_to_place[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
 			}
-			cudaCheckCall(cudaMemcpy(food_to_place_spot_d, food_to_place, sizeof(food_t) * (size_t)num_new_sources_spot, cudaMemcpyHostToDevice));
 		}
+		cudaCheckCall(cudaMemcpy(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)max_new_sources, cudaMemcpyHostToDevice));
 
 		/* Steps of the simulation */
-		cudaCheckKernel((placeFood<<<BLOCK_F, THREADS>>>(food_to_place_d, num_new_sources, food_to_place_spot_d, num_new_sources_spot)));
+		cudaCheckKernel((placeFood<<<BLOCK_F, THREADS>>>(food_to_place_d, max_new_sources)));
 		cudaCheckKernel((step2<<<BLOCK_F, THREADS>>>()));
 		cudaCheckKernel((recount<<<1, 1>>>()));
 		cudaCheckKernel((step3<<<2*BLOCK_C, THREADS>>>()));
