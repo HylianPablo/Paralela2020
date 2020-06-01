@@ -1,0 +1,1000 @@
+ 1025  diff 0.txt 1.txt 
+ 1026  diff 0.txt 1.txt > d. 
+ 1027  make evolution original 
+ 1028  diff 0.txt 1.txt > d. 
+ 1029  make
+ 1030  make original evolution 
+ 1031  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1032  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1033  diff 0.txt 1.txt > d.
+ 1034  make original evolution 
+ 1035  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1036  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1037  diff 0.txt 1.txt > d.
+ 1038  make original evolution 
+ 1039  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1040  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1041  diff 0.txt 1.txt > d.
+ 1042  make original evolution 
+ 1043  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1044  diff 0.txt 1.txt > d.
+ 1045  make original evolution 
+ 1046  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1047  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1048  sort 1.txt > 1o.txt
+ 1049  sort 0.txt > 0o.txt
+ 1050  subl 0o.txt 
+ 1051  subl 1o.txt 
+ 1052  diff 0o.txt 1o.txt 
+ 1053  diff 0o.txt 1o.txt > d.
+ 1054  make original evolution 
+ 1055  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1056  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1057  sort 1.txt > 1o.txt
+ 1058  sort 0.txt > 0o.txt
+ 1059  diff 0o.txt 1o.txt > d.
+ 1060  make original evolution 
+ 1061  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1062  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1063  sort 1.txt > 1o.txt
+ 1064  sort 0.txt > 0o.txt
+ 1065  make original evolution 
+ 1066  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1067  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1068  sort 1.txt > 1o.txt
+ 1069  sort 0.txt > 0o.txt
+ 1070  diff 0o.txt 1o.txt > d.
+ 1071  subl Makefile 
+ 1072  make odebug debug 
+ 1073  rm d. 
+ 1074  rm o*.txt
+ 1075  ll
+ 1076  rm 0*.txt
+ 1077  rm 1*.txt
+ 1078  ll
+ 1079  cat a.txt 
+ 1080  rm a.txt 
+ 1081  ll
+ 1082  ./debug 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1083  ./odebug 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1084  ./odebug 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1085  ./debug 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1086  make odebug debug 
+ 1087  ./debug 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1088  diff 0.txt 1.txt > d.txt
+ 1089  subl d.txt 
+ 1090  make evolution original 
+ 1091  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1092  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1093  make evolution original 
+ 1094  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1095  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1096  diff 0.txt 1.txt 
+ 1097  diff 0.txt 1.txt > d.txt 
+ 1098  make evolution original 
+ 1099  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1100  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1101  diff 0.txt 1.txt > d.txt 
+ 1102  make evolution original 
+ 1103  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1104  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1105  diff 0.txt 1.txt > d.txt 
+ 1106  make evolution original 
+ 1107  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1108  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1109  make evolution original 
+ 1110  make original 
+ 1111  make evolution 
+ 1112  make evolution > d.txt 
+ 1113  make evolution 2> d.txt 
+ 1114  make original evolution 
+ 1115  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1116  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1117  make original evolution 
+ 1118  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1119  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1120  diff 0.txt 1.txt > d.txt 
+ 1121  make original 
+ 1122  make debug 
+ 1123  make evolution 
+ 1124  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1125  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1126  make tgz
+ 1127  make evolution 
+ 1128  make original 
+ 1129  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1130  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1131  make evolution 
+ 1132  make original 
+ 1133  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1134  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1135  diff 0.txt 1.txt 
+ 1136  diff 0.txt 1.txt > d.txt 
+ 1137  cd git/Cerberus/
+ 1138  node .
+ 1139  clear
+ 1140  node .
+ 1141  ps -lx
+ 1142  ll
+ 1143  chmod 755 60.sh 
+ 1144  ll
+ 1145  make original 
+ 1146  make evolution 
+ 1147  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1148  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1149  diff 0.txt 1.txt > d.txt 
+ 1150  make original 
+ 1151  make evolution 
+ 1152  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1153  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1154  diff 0.txt 1.txt > d.txt 
+ 1155  make original 
+ 1156  make evolution 
+ 1157  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1158  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1159  diff 0.txt 1.txt > d.txt 
+ 1160  make evolution original 
+ 1161  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1162  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1163  diff 0.txt 1.txt > d.txt 
+ 1164  make evolution original 
+ 1165  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1166  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1167  diff 0.txt 1.txt > d.txt 
+ 1168  make evolution original 
+ 1169  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1170  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1171  diff 0.txt 1.txt > d.txt 
+ 1172  make evolution original 
+ 1173  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1174  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1175  diff 0.txt 1.txt > d.txt 
+ 1176  make evolution original 
+ 1177  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1178  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1179  diff 0.txt 1.txt > d.txt 
+ 1180  make evolution original 
+ 1181  ./original 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1182  ./evolution 29 40 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1183  diff 0.txt 1.txt > d.txt 
+ 1184  make evolution original 
+ 1185  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1186  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1187  diff 0.txt 1.txt > d.txt 
+ 1188  make evolution original 
+ 1189  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1190  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1191  diff 0.txt 1.txt > d.txt 
+ 1192  make
+ 1193  make original 
+ 1194  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1195  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1196  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1197  make
+ 1198  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1199  make original evolution 
+ 1200  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1201  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1202  diff 0.txt 1.txt > d.txt 
+ 1203  make
+ 1204  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1205  diff 0.txt 1.txt > d.txt 
+ 1206  make original evolution 
+ 1207  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1208  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1209  diff 0.txt 1.txt > d.txt 
+ 1210  make
+ 1211  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1212  make evolution original 
+ 1213  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1214  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1215  make
+ 1216  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1217  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1218  make
+ 1219  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1220  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1221  make tgz
+ 1222  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8
+ 1223  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1224  ./original 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1225  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1226  git add .
+ 1227  git commit -m "Sincronizado 4.5 y 4.8."
+ 1228  git push
+ 1229  make original evolution 
+ 1230  ./evolution 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1231  ./original 25 25 60 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1232  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1233  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1234  make original evolution 
+ 1235  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1236  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1237  make original evolution 
+ 1238  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1239  make original evolution 
+ 1240  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1241  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1242  make original evolution 
+ 1243  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1244  make original evolution 
+ 1245  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1246  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1247  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1248  make original evolution 
+ 1249  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1250  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1251  diff 0.txt 1.txt > d.txt 
+ 1252  make original evolution 
+ 1253  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1254  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1255  diff 0.txt 1.txt > d.txt 
+ 1256  make original evolution 
+ 1257  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1258  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1259  make original evolution 
+ 1260  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1261  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1262  diff 0.txt 1.txt > d.txt 
+ 1263  make original evolution 
+ 1264  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1265  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1266  make original evolution 
+ 1267  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1268  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1269  diff 0.txt 1.txt > d.txt 
+ 1270  make original evolution 
+ 1271  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1272  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1273  diff 0.txt 1.txt > d.txt 
+ 1274  make original evolution 
+ 1275  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1276  diff 0.txt 1.txt > d.txt 
+ 1277  git add .
+ 1278  git commit -m "Culture_cells metido en alive."
+ 1279  git push
+ 1280  make original evolution 
+ 1281  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1282  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1283  diff 0.txt 1.txt > d.txt 
+ 1284  make original evolution 
+ 1285  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1286  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1287  make original evolution 
+ 1288  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1289  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1290  make original evolution 
+ 1291  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1292  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1293  make original evolution 
+ 1294  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1295  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1296  make evolution original 
+ 1297  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1298  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1299  make evolution original 
+ 1300  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1301  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1302  make evolution original 
+ 1303  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1304  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1305  make evolution original 
+ 1306  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1307  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1308  diff 0.txt 1.txt > d.txt 
+ 1309  make evolution original 
+ 1310  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1311  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1312  diff 0.txt 1.txt > d.txt 
+ 1313  make evolution original 
+ 1314  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1315  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1316  diff 0.txt 1.txt 
+ 1317  diff 0.txt 1.txt > d.txt 
+ 1318  make evolution original 
+ 1319  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1320  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1321  diff 0.txt 1.txt > d.txt 
+ 1322  make evolution original 
+ 1323  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1324  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1325  diff 0.txt 1.txt > d.txt 
+ 1326  make evolution original 
+ 1327  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1328  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1329  diff 0.txt 1.txt > d.txt 
+ 1330  make evolution original 
+ 1331  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1332  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1333  diff 0.txt 1.txt > d.txt 
+ 1334  make evolution original 
+ 1335  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1336  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1337  diff 0.txt 1.txt > d.txt 
+ 1338  make evolution original 
+ 1339  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1340  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1341  diff 0.txt 1.txt > d.txt 
+ 1342  make evolution original 
+ 1343  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1344  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1345  make evolution original 
+ 1346  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1347  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1348  diff 0.txt 1.txt > d.txt 
+ 1349  make evolution original 
+ 1350  ./original 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1351  ./evolution 25 25 100 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1352  diff 0.txt 1.txt > d.txt 
+ 1353  make
+ 1354  make original 
+ 1355  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1356  make
+ 1357  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1358  make tgz
+ 1359  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50
+ 1360  make
+ 1361  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50
+ 1362  make
+ 1363  make original 
+ 1364  make original evolution 
+ 1365  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 1.txt 
+ 1366  ./original 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 0.txt 
+ 1367  diff 0.txt 1.txt > d.txt 
+ 1368  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 1.txt 
+ 1369  diff 0.txt 1.txt > d.txt 
+ 1370  make original evolution 
+ 1371  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 1.txt 
+ 1372  ./original 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 0.txt 
+ 1373  diff 0.txt 1.txt > d.txt 
+ 1374  make original evolution 
+ 1375  ./original 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 0.txt 
+ 1376  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 1.txt 
+ 1377  diff 0.txt 1.txt > d.txt 
+ 1378  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 1.txt 
+ 1379  diff 0.txt 1.txt > d.txt 
+ 1380  ./evolution 25 25 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 1.txt 
+ 1381  ./original 25 25 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50 > 0.txt 
+ 1382  diff 0.txt 1.txt > d.txt 
+ 1383  git add .
+ 1384  git commit -m "Pusheando"
+ 1385  git push
+ 1386  make evolution o
+ 1387  make evolution original 
+ 1388  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1389  ./original 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1390  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1391  ./evolution 29 40 600 100.0 0.011 15.0 22177 37626 24340 8
+ 1392  ./original 29 40 600 100.0 0.011 15.0 22177 37626 24340 8
+ 1393  ./evolution 29 40 600 100.0 0.011 15.0 22177 37626 24340 8
+ 1394  ./evolution 29 40 2000 100.0 0.011 15.0 22177 37626 24340 8
+ 1395  ./original 29 40 2000 100.0 0.011 15.0 22177 37626 24340 8
+ 1396  ./original 29 40 20 100.0 0.11 15.0 22177 37626 24340 30
+ 1397  ./evolution 29 40 20 100.0 0.11 15.0 22177 37626 24340 30
+ 1398  ./evolution 29 40 20 100.0 0.11 15.0 22177 37626 24340 40
+ 1399  ./original 29 40 20 100.0 0.11 15.0 22177 37626 24340 40
+ 1400  ./original 29 40 20 100.0 0.11 15.0 22177 37626 24340 50
+ 1401  ./evolution 29 40 20 100.0 0.11 15.0 22177 37626 24340 50
+ 1402  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 50
+ 1403  ./original 29 40 20 100.0 0.11 50.0 22177 37626 24340 50
+ 1404  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 50
+ 1405  ./original 29 40 20 100.0 0.11 50.0 22177 37626 24340 50
+ 1406  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 50
+ 1407  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 15
+ 1408  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 15
+ 1409  ./original 29 40 20 100.0 0.11 50.0 22177 37626 24340 15
+ 1410  ./original 29 40 20 100.0 0.11 50.0 22177 37626 24340 10
+ 1411  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 10
+ 1412  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 2
+ 1413  ./original 29 40 20 100.0 0.11 50.0 22177 37626 24340 2
+ 1414  ./ 29 40 20 100.0 0.011 15.0 22177 37626 24340 2
+ 1415  ./l 29 40 20 100.0 0.011 15.0 22177 37626 24340 2
+ 1416  ./original 29 40 20 100.0 0.011 20.0 22177 37626 24340 2
+ 1417  ./evolution 29 40 20 100.0 0.011 20.0 22177 37626 24340 2
+ 1418  ./evolution 29 40 20 100.0 0.011 30.0 22177 37626 24340 2
+ 1419  ./original 29 40 20 100.0 0.011 30.0 22177 37626 24340 2
+ 1420  ./original 29 40 20 100.0 0.011 50.0 22177 37626 24340 2
+ 1421  ./evolution 29 40 20 100.0 0.011 50.0 22177 37626 24340 2
+ 1422  ./original 29 40 20 100.0 0.011 50.0 22177 37626 24340 2
+ 1423  ./original 29 40 20 100.0 0.011 50.0 22177 37626 24340 3
+ 1424  ./evolution 29 40 20 100.0 0.011 50.0 22177 37626 24340 3
+ 1425  ./evolution 29 40 20 100.0 0.011 50.0 22177 37626 24340 8
+ 1426  ./original 29 40 20 100.0 0.011 50.0 22177 37626 24340 8
+ 1427  ./original 29 40 20 100.0 0.11 50.0 22177 37626 24340 2
+ 1428  ./evolution 29 40 20 100.0 0.11 50.0 22177 37626 24340 2
+ 1429  ./original 29 40 20 100.0 0.11 50.0 22177 37626 24340 2
+ 1430  ./original 25 25 20 100.0 0.11 50.0 22177 37626 24340 2
+ 1431  ./evolution 25 25 20 100.0 0.11 50.0 22177 37626 24340 2
+ 1432  ./evolution 25 25 20 100.0 0.11 15.0 22177 37626 24340 2
+ 1433  ./original 25 25 20 100.0 0.11 15.0 22177 37626 24340 2
+ 1434  ./original 25 25 20 100.0 0.11 20.0 22177 37626 24340 2
+ 1435  ./evolution 25 25 20 100.0 0.11 20.0 22177 37626 24340 2
+ 1436  ./evolution 25 25 20 100.0 0.11 25.0 22177 37626 24340 2
+ 1437  ./original 25 25 20 100.0 0.11 25.0 22177 37626 24340 2
+ 1438  ./original 25 25 20 100.0 0.11 30.0 22177 37626 24340 2
+ 1439  ./evolution 25 25 20 100.0 0.11 30.0 22177 37626 24340 2
+ 1440  ./original 25 25 20 100.0 0.11 30.0 22177 37626 24340 2
+ 1441  ./original 25 25 10 100.0 0.11 30.0 22177 37626 24340 2
+ 1442  ./evolution 25 25 10 100.0 0.11 30.0 22177 37626 24340 2
+ 1443  ./evolution 25 25 15 100.0 0.11 30.0 22177 37626 24340 2
+ 1444  ./original 25 25 15 100.0 0.11 30.0 22177 37626 24340 2
+ 1445  make evolution original 
+ 1446  ./original 25 25 15 100.0 0.11 30.0 22177 37626 24340 2 > 1.txt 
+ 1447  ./original 25 25 15 100.0 0.11 30.0 22177 37626 24340 2 > 0.txt 
+ 1448  ./evolution 25 25 15 100.0 0.11 30.0 22177 37626 24340 2 > 1.txt 
+ 1449  diff 0.txt 1.txt > d.
+ 1450  rm d.
+ 1451  diff 0.txt 1.txt > d.txt 
+ 1452  make original evolution 
+ 1453  ./original 25 25 15 100.0 0.11 30.0 22177 37626 24340 2 > 0.txt 
+ 1454  ./evolution 25 25 15 100.0 0.11 30.0 22177 37626 24340 2 > 1.txt 
+ 1455  diff 0.txt 1.txt > d.txt 
+ 1456  make evolution 
+ 1457  ./evolution 25 25 15 100.0 0.11 30.0 22177 37626 24340 2 > 1.txt 
+ 1458  make original evolution 
+ 1459  ./evolution 25 25 15 100.0 0.11 30.0 22177 37626 24340 2
+ 1460  ./original 25 25 15 100.0 0.11 30.0 22177 37626 24340 2
+ 1461  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50
+ 1462  ./original 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 50
+ 1463  ./original 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8
+ 1464  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8
+ 1465  ./original 29 40 600 1000.0 0.05 50.0 22177 37626 24340 8
+ 1466  ./evolution 29 40 600 1000.0 0.05 50.0 22177 37626 24340 8
+ 1467  ./evolution 29 40 600 1000.0 0.05 20.0 22177 37626 24340 8
+ 1468  ./original 29 40 600 1000.0 0.05 20.0 22177 37626 24340 8
+ 1469  ./original 29 40 600 1000.0 0.05 20.0 22177 37626 24340 2
+ 1470  ./evolution 29 40 600 1000.0 0.05 20.0 22177 37626 24340 2
+ 1471  ./evolution 25 25 600 1000.0 0.05 20.0 22177 37626 24340 2
+ 1472  ./original 25 25 600 1000.0 0.05 20.0 22177 37626 24340 2
+ 1473  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1474  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1475  ./evolution 25 25 100 1000.0 0.05 20.0 22177 37626 24340 2
+ 1476  ./original 25 25 100 1000.0 0.05 20.0 22177 37626 24340 2
+ 1477  ./original 25 25 150 1000.0 0.05 20.0 22177 37626 24340 2
+ 1478  ./evolution 25 25 150 1000.0 0.05 20.0 22177 37626 24340 2
+ 1479  ./evolution 25 25 200 1000.0 0.05 20.0 22177 37626 24340 2
+ 1480  ./original 25 25 200 1000.0 0.05 20.0 22177 37626 24340 2
+ 1481  ./original 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2
+ 1482  ./evolution 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2
+ 1483  make original evolution 
+ 1484  ./evolution 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1485  ./original 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1486  diff 0.txt 1.txt > d.txt 
+ 1487  ./evolution 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1488  diff 0.txt 1.txt > d.txt 
+ 1489  make original evolution 
+ 1490  ./evolution 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1491  ./original 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1492  diff 0.txt 1.txt > d.txt 
+ 1493  sort 0.txt o0.txt
+ 1494  sort 1.txt o1.txt
+ 1495  sort 0.txt > o0.txt
+ 1496  sort 1.txt > o1.txt
+ 1497  diff o0.txt o1.txt 
+ 1498  rm o*.txt
+ 1499  make original evolution 
+ 1500  ./evolution 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1501  ./original 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1502  sort 1.txt > o1.txt
+ 1503  sort 0.txt > o0.txt
+ 1504  diff o1.txt o0.txt 
+ 1505  ./evolution 25 25 250 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1506  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1507  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1508  sort 0.txt > o0.txt
+ 1509  sort 1.txt > o1.txt
+ 1510  diff o1.txt o0.txt 
+ 1511  diff o1.txt o0.txt > d.txt 
+ 1512  make original evolution 
+ 1513  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1514  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1515  diff 1.txt 0.txt 
+ 1516  diff 1.txt 0.txt > d.txt 
+ 1517  sort a.txt > oa.txt
+ 1518  sort b.txt > ob.txt
+ 1519  subl oa.txt 
+ 1520  subl ob.txt 
+ 1521  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1522  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1523  diff 1.txt 0.txt 
+ 1524  diff 1.txt 0.txt >d.txt 
+ 1525  make original 
+ 1526  make debug 
+ 1527  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1528  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1529  diff 1.txt 0.txt >d.txt 
+ 1530  make original 
+ 1531  make evolution 
+ 1532  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 0.txt 
+ 1533  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1534  diff 1.txt 0.txt >d.txt 
+ 1535  make
+ 1536  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1537  make
+ 1538  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1539  make
+ 1540  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2 > 1.txt 
+ 1541  make
+ 1542  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1543  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1544  make original 
+ 1545  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1546  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1547  make
+ 1548  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1549  make
+ 1550  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1551  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1552  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1553  make
+ 1554  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1555  make
+ 1556  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1557  make
+ 1558  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1559  make
+ 1560  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1561  make
+ 1562  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1563  make
+ 1564  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1565  make
+ 1566  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1567  make
+ 1568  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1569  make
+ 1570  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1571  make
+ 1572  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1573  make
+ 1574  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1575  make
+ 1576  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1577  make
+ 1578  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1579  make
+ 1580  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1581  make
+ 1582  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1583  make
+ 1584  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1585  make
+ 1586  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1587  make
+ 1588  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1589  make
+ 1590  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1591  make
+ 1592  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1593  make
+ 1594  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1595  make
+ 1596  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1597  make
+ 1598  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1599  ./original 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1600  make tgz
+ 1601  ./evolution 25 25 300 1000.0 0.05 20.0 22177 37626 24340 2
+ 1602  ./evolution 2900 4000 1000 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1603  ./original 2900 4000 1000 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1604  ./original 2900 4000 100 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1605  ./evolution 2900 4000 100 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1606  ./evolution 2900 4000 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1607  ./original 2900 4000 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1608  /original 290 400 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1609  ./original 290 400 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1610  ./evolution 290 400 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1611  ./evolution 2900 400 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1612  ./original 2900 400 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1613  ./original 2900 4000 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1614  ./evolution 2900 4000 50 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1615  ./evolution 2900 4000 20 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1616  ./original 2900 4000 20 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1617  ./original 2900 4000 10 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1618  ./evolution 2900 4000 10 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1619  ./evolution 2900 4000 11 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1620  ./original 2900 4000 11 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1621  ./original 2900 4000 15 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1622  ./evolution 2900 4000 15 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1623  ./evolution 2900 4000 13 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1624  ./original 2900 4000 13 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1625  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1626  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1627  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1628  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 10
+ 1629  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 10
+ 1630  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 5
+ 1631  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 5
+ 1632  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 2
+ 1633  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 2
+ 1634  ./evolution 2900 4000 14 3000.0 0.015 
+ 1635  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 32
+ 1636  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 32
+ 1637  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 10
+ 1638  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 32
+ 1639  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 10
+ 1640  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 10
+ 1641  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 5
+ 1642  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 5
+ 1643  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 7
+ 1644  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 7
+ 1645  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1646  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1647  make
+ 1648  make original 
+ 1649  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1650  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1651  diff 0.txt 1.txt 
+ 1652  diff 0.txt 1.txt > d.txt 
+ 1653  rm *.txt
+ 1654  make original evolution 
+ 1655  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1656  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1657  subl 1.txt 
+ 1658  subl 0.txt 
+ 1659  git add .
+ 1660  git commit -m "Mi pana Miguel"
+ 1661  git push
+ 1662  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1663  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1664  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1665  make
+ 1666  make original 
+ 1667  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1668  make
+ 1669  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1670  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1671  make original 
+ 1672  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1673  make
+ 1674  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1675  make original 
+ 1676  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1677  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1678  make evolution original 
+ 1679  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1680  make evolution original 
+ 1681  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1682  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1683  make evolution original 
+ 1684  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1685  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1686  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1687  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1688  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1689  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1690  make original 
+ 1691  make debug 
+ 1692  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1693  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1694  make
+ 1695  make clean
+ 1696  make original evolution 
+ 1697  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1698  diff 1.txt 0.txt 
+ 1699  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1700  make
+ 1701  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1702  make 
+ 1703  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1704  make
+ 1705  make original 
+ 1706  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1707  make original evolution 
+ 1708  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 0.txt 
+ 1709  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8 > 1.txt 
+ 1710  make
+ 1711  make original 
+ 1712  ./original 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1713  ./evolution 2900 4000 14 3000.0 0.015 12.0 0 0 0 8
+ 1714  make tgz 
+ 1715  ./client -q cudalb_score -u g110 -X A7u2nExB miPanaMiguel.cu
+ 1716  ./client -q cudalb_score -u g110 -x A7u2nExB miPanaMiguel.cu
+ 1717  ./client -q cudalb -u g110 -x A7u2nExB miPanaMiguel.cu
+ 1718  subl Makefile 
+ 1719  make
+ 1720  make tgz 
+ 1721  make
+ 1722  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1723  make
+ 1724  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1725  make
+ 1726  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1727  make
+ 1728  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1729  make
+ 1730  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1731  make tgz 
+ 1732  ./client -q cuda -u g110 -x A7u2nExB miPanaMiguel.cu -- 5000 5000 600 1000.0 0.005 20.0 28783 648 47734 250000
+ 1733  5000 5000 600 1000.0 0.005 20.0 28783 648 47734 250000
+ 1734  ./evolution 5000 5000 600 1000.0 0.005 20.0 28783 648 47734 250000
+ 1735  ./client -q cudalb_score -u g110 -x A7u2nExB miPanaMiguel.cu
+ 1736  ./client -q cudalb -u g110 -x A7u2nExB miPanaMiguel.cu
+ 1737  git add .
+ 1738  git commit -m "C'est fini(?)
+ 1739  "
+ 1740  git push
+ 1741  cd git/Cerberus/
+ 1742  node .
+ 1743  cd git/infor/Ilegal/PAR/Práctica\ 2\ 2020\ \(2048\)/
+ 1744  xdg-open .
+ 1745  rm *.txt
+ 1746  rm original.cu 
+ 1747  ll
+ 1748  rm *.tgz
+ 1749  ll
+ 1750  make clean
+ 1751  ll
+ 1752  rm odebug 
+ 1753  sugl Makefile 
+ 1754  subl Makefile 
+ 1755  ll
+ 1756  mv ~/Downloads/original.cu .
+ 1757  ll
+ 1758  git add .
+ 1759  git commit -m "Limpiado todo un poco. Hacer mege?"
+ 1760  git push
+ 1761  wxGlade
+ 1762  wx
+ 1763  cd git/Cerberus/
+ 1764  xdg-open .
+ 1765  git add .
+ 1766  git commit -m "More real-use changes."
+ 1767  git push
+ 1768  ll
+ 1769  chmod 755 8.sh 
+ 1770  ll
+ 1771  chmod 755 32.sh 
+ 1772  wxglade 
+ 1773  make
+ 1774  make tgz 
+ 1775  make
+ 1776  make tgz 
+ 1777  make
+ 1778  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1779  make tgz 
+ 1780  make
+ 1781  make tgz 
+ 1782  make
+ 1783  make tgz 
+ 1784  make
+ 1785  ./evolution 29 40 10 100.0 0.011 15.0 22177 37626 24340 8
+ 1786  make
+ 1787  ./evolution 29 40 10 100.0 0.011 15.0 22177 37626 24340 8
+ 1788  make
+ 1789  ./evolution 29 40 10 100.0 0.011 15.0 22177 37626 24340 8
+ 1790  nvcc -ptx -O0 miPanaMiguel.cu -o miPanaMiguel.ptx
+ 1791  nvcc -I. -ptx -O0 miPanaMiguel.cu -o miPanaMiguel.ptx
+ 1792  nvcc -I. -ptx -O3 miPanaMiguelSanic.cu -o miPanaMiguel.ptx
+ 1793  nvcc -I. -ptx -O3 miPanaMiguel.cu -o miPanaMiguelSanic.ptx
+ 1794  subl miPanaMiguelSanic.ptx 
+ 1795  rm miPanaMiguelSanic.ptx 
+ 1796  nvcc -I. -ptx -O0 miPanaMiguel.cu -o miPanaMiguelMal.ptx
+ 1797  subl miPanaMiguelMal.ptx 
+ 1798  make
+ 1799  ./evolution 29 40 10 100.0 0.011 15.0 22177 37626 24340 8
+ 1800  nvcc -I. -ptx -O3 miPanaMiguel.cu -o miPanaMiguel.ptx
+ 1801  make
+ 1802  clear
+ 1803  make
+ 1804  lear
+ 1805  make
+ 1806  mkae
+ 1807  make
+ 1808  clear
+ 1809  make
+ 1810  naje
+ 1811  make
+ 1812  ./evolution 29 40 10 100.0 0.011 15.0 22177 37626 24340 8
+ 1813  make
+ 1814  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1815  make
+ 1816  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1817  make
+ 1818  ./evolution 29 40 16 100.0 0.011 15.0 22177 37626 24340 8
+ 1819  make
+ 1820  ./evolution 29 40 16 100.0 0.011 15.0 22177 37626 24340 8
+ 1821  ./evolution 29 40 16 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt
+ 1822  make
+ 1823  ./evolution 29 40 16 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt
+ 1824  subl 1.txt 
+ 1825  subl 0.txt 
+ 1826  make
+ 1827  ./evolution 29 40 16 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt
+ 1828  make
+ 1829  ./evolution 29 40 16 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt
+ 1830  make
+ 1831  ./evolution 29 40 16 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt
+ 1832  make
+ 1833  cd git/Cerberus/
+ 1834  node .
+ 1835  python
+ 1836  sudo apt-get update
+ 1837  sudo pip3 install -U wxpython
+ 1838  python3 -m pipi install --upgrade pip
+ 1839  python3 -m pip install --upgrade pip
+ 1840  sudo apt-get update 
+ 1841  sudo apt-get install make gcc libgtk-3-dev 
+ 1842  sudo apt-get install libwebkitgtk-dev libwebkitgtk-3.0-dev --y
+ 1843  sudo apt-get install --y libwebkitgtk-dev libwebkitgtk-3.0-dev
+ 1844  sudo apt-get install -y libwebkitgtk-dev libwebkitgtk-3.0-dev
+ 1845  sudo apt-get install -y libgstreamer-gl1.0-0 freeglut3 freeglut3-dev 
+ 1846  sudo apt-get install -y python-gst-1.0 python3-gst-1.0 libglib2.0-dev
+ 1847  sudo apt-get install -y ubuntu-restricted-extras libgstreamer-plugins-base1.0-dev 
+ 1848  sudo apt-get install -y pyhton3-wxgtk4.0 python3-wxgtk-webview4.0 python3-wxgtk-media4.0 
+ 1849  sudo apt-get install -y python3-pip
+ 1850  sudo apt-get install -y pyhton3-wxgtk4.0 python3-wxgtk-webview4.0 python3-wxgtk-media4.0 
+ 1851  sudo apt-get install -y python3-wxgtk4.0 python3-wxgtk-webview4.0 python3-wxgtk-media4.0 
+ 1852  sudo apt-get install -y wxglade
+ 1853  wxglade 
+ 1854  cd git/Paralela2020/PRACTICA3\ -\ CUDA/
+ 1855  make
+ 1856  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1857  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1858  make
+ 1859  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1860  subl 1.txt 
+ 1861  subl 0.txt 
+ 1862  diff 1.txt 0.txt 
+ 1863  make
+ 1864  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1865  make
+ 1866  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1867  makeç
+ 1868  make
+ 1869  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1870  make
+ 1871  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1872  make
+ 1873  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1874  make
+ 1875  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1876  make
+ 1877  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1878  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1879  make
+ 1880  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1881  make
+ 1882  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1883  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 1.txt 
+ 1884  make
+ 1885  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8 > 0.txt 
+ 1886  make
+ 1887  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1888  make
+ 1889  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1890  make
+ 1891  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1892  make
+ 1893  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1894  make
+ 1895  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1896  make
+ 1897  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 1898  make
+ 1899  make tgz 
+ 1900  xdg-open .
+ 1901  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1902  make
+ 1903  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1904  make
+ 1905  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1906  make
+ 1907  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1908  make
+ 1909  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1910  make
+ 1911  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1912  make
+ 1913  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1914  make
+ 1915  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1916  make
+ 1917  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1918  make
+ 1919  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1920  make
+ 1921  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1922  make
+ 1923  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1924  make
+ 1925  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1926  make
+ 1927  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1928  make
+ 1929  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1930  makeç
+ 1931  make
+ 1932  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12 > 1.txt 
+ 1933  make
+ 1934  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12 > 1.txt 
+ 1935  make
+ 1936  ./evolution 29 40 600 1000.0 0.005 5.0 22177 37626 24340 8 5 5 12 12 0.05 12
+ 1937  make
+ 1938  make tgz 
+ 1939  history > h.txt
+ 1940  subl h.txt 
+ 1941  ./client -q cuda -u g110 -X A7u2nExB miPanaMiguel.cu -- 2900 4000 1000 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31
+ 1942  ./client -q cuda -u g110 -x A7u2nExB miPanaMiguel.cu -- 2900 4000 1000 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31
+ 1943  ./client -q cuda -u g110 -X A7u2nExB miPanaMiguel.cu -- 2900 4000 1000 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1944  ./client -q cuda -u g110 -x A7u2nExB miPanaMiguel.cu -- 2900 4000 1000 3000.0 0.015 12.0 0 0 0 32 100 100 100 100 0.31 30
+ 1945  ./client -q cuda -u g110 -x A7u2nExB miPanaMiguel.cu -- 5000 5000 600 1000.0 0.005 20.0 28783 648 47734 250000
+ 1946  ./client -q cudalb_score -u g110 -x A7u2nExB miPanaMiguel.cu
+ 1947  ./client -q cudalb -u g110 -x A7u2nExB miPanaMiguel.cu
+ 1948  rm *.txt
+ 1949  rm miPanaMiguel\ \(copy\).cu 
+ 1950  ll
+ 1951  git add .
+ 1952  git commit -m "Mejorado un poquito."
+ 1953  git push
+ 1954  git add .
+ 1955  gti commit -m "Eliminado algo mal."
+ 1956  git commit -m "Eliminado algo mal."
+ 1957  git push
+ 1958  python
+ 1959  subl
+ 1960  cd git/Cerberus/
+ 1961  clear
+ 1962  node .
+ 1963  clear
+ 1964  node .
+ 1965  clear
+ 1966  node .
+ 1967  clear
+ 1968  node .
+ 1969  clear
+ 1970  node .
+ 1971  clear
+ 1972  node .
+ 1973  python3 ./clon3.py 
+ 1974  python3 Practica2.py 
+ 1975  zip Practica2.zip Practica2.*
+ 1976  zip clon3.zip con3*
+ 1977  zip clon3.zip clon3*
+ 1978  make
+ 1979  wxglade juego.wxg
+ 1980  wxglade 
+ 1981  wxglade tablero.wxg
+ 1982  git add .
+ 1983  git commit -m "Basura de práctica la verdad; y demás cosas del campus virtual."
+ 1984  git push
+ 1985  git pull
+ 1986  git add .
+ 1987  git commit -m "En serio basura de práctica."
+ 1988  git push
+ 1989  cd git/infor/2/2/FIA
+ 1990  xdg-open .
+ 1991  cd git/
+ 1992  subl a.c
+ 1993  gcc a.c 
+ 1994  ./a.out 
+ 1995  gcc a.c 
+ 1996  ./a.out 
+ 1997  clear
+ 1998  gcc a.c 
+ 1999  ./a.out 
+ 2000  make
+ 2001  make tgz 
+ 2002  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2003  make
+ 2004  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2005  make
+ 2006  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2007  make
+ 2008  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2009  make
+ 2010  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2011  make
+ 2012  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2013  make
+ 2014  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2015  make
+ 2016  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2017  make
+ 2018  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2019  make
+ 2020  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2021  make
+ 2022  ./evolution 29 40 300 100.0 0.011 15.0 22177 37626 24340 8
+ 2023  make tgz 
+ 2024  history > h.txt

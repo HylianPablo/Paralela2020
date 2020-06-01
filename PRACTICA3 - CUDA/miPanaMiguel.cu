@@ -239,7 +239,7 @@ __device__ int rows = 0;
 __device__ int columns = 0;
 __device__ int num_cells = 0;
 __device__ int *culture = NULL;
-__device__ int *culture_cells = NULL;
+__device__ short *culture_cells = NULL;
 __device__ Cell *cells = NULL;
 __device__ Cell *cells_aux = NULL;
 __device__ Statistics *sim_stat;
@@ -252,7 +252,7 @@ __device__ int *free_position = NULL;
  * Initialize global device variables.
  *
  */
-__global__ void initGPU(int *culture_d, int *culture_cells_d, int rows_d, int columns_d, Cell *cells_d1, Cell *cells_d2, int num_cells_d, Statistics *stats, int *free_position_d)
+__global__ void initGPU(int *culture_d, short *culture_cells_d, int rows_d, int columns_d, Cell *cells_d1, Cell *cells_d2, int num_cells_d, Statistics *stats, int *free_position_d)
 {
 	rows = rows_d;
 	columns = columns_d;
@@ -371,7 +371,15 @@ __global__ void step1()
 				if ( my_cell->pos_col >= columns * PRECISION) my_cell->pos_col -= columns * PRECISION;
 			}
 			/* 4.3.4. Annotate that there is one more cell in this culture position */
-			atomicAdd(&accessMat( culture_cells, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION ), 1);
+			short *pos = &accessMat( culture_cells, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION );
+			int inc = 0x1;
+			if (((long)pos) % 4 != 0)
+			{
+				pos -= 1;
+				inc = 0x10000;
+
+			}
+			atomicAdd((int *)pos, inc);
 		}
 
 	} // End cell movements
@@ -865,13 +873,14 @@ int main(int argc, char *argv[]) {
 	culture_cells = NULL;
 
 	/* Device equivalents */
-	int *culture_d, *culture_cells_d;
+	int *culture_d;
+	short *culture_cells_d;
 	cudaCheckCall(cudaMalloc(&culture_d, sizeof(int) * (size_t)rows * (size_t)columns));
-	cudaCheckCall(cudaMalloc(&culture_cells_d, sizeof(int) * (size_t)rows * (size_t)columns));
+	cudaCheckCall(cudaMalloc(&culture_cells_d, sizeof(short) * (size_t)rows * (size_t)columns));
 
 	/* Set both surfaces to 0 */
 	cudaMemset(culture_d, 0, sizeof(int) * (size_t)rows * (size_t)columns);
-	cudaMemset(culture_cells_d, 0, sizeof(int) * (size_t)rows * (size_t)columns);
+	cudaMemset(culture_cells_d, 0, sizeof(short) * (size_t)rows * (size_t)columns);
 
 	/* Copy random cell seeds to device */
 	unsigned short *random_seqs;
