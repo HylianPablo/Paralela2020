@@ -373,7 +373,7 @@ __global__ void step1()
 			/* 4.3.4. Annotate that there is one more cell in this culture position */
 			short *pos = &accessMat( culture_cells, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION );
 			int inc = 0x1;
-			if (((long)pos) % 4 != 0)
+			if (((long) pos) % 4 != 0)
 			{
 				pos -= 1;
 				inc = 0x10000;
@@ -519,7 +519,7 @@ __global__ void recount()
 		: "=r"(num_cells)
 		: "r"(num_cells_alive)
 	);
-	// Not gonna lie, we couldn't make it to work in just one asm() call.
+	// Not gonna lie, we couldn't get it to work in just one asm() call.
 }
 
 /*
@@ -882,6 +882,10 @@ int main(int argc, char *argv[]) {
 	cudaMemset(culture_d, 0, sizeof(int) * (size_t)rows * (size_t)columns);
 	cudaMemset(culture_cells_d, 0, sizeof(short) * (size_t)rows * (size_t)columns);
 
+	/* CUDA streams */
+	cudaStream_t alt;
+	cudaCheckCall(cudaStreamCreate(&alt));
+
 	/* Copy random cell seeds to device */
 	unsigned short *random_seqs;
 	cudaCheckCall(cudaMallocHost(&random_seqs, sizeof(unsigned short) * 3 * num_cells));
@@ -892,7 +896,7 @@ int main(int argc, char *argv[]) {
 		for (j = 0; j < 3; j++)
 			random_seqs[3*i + j] = cells[i].random_seq[j];
 
-	cudaCheckCall(cudaMemcpy(random_seqs_d, random_seqs, sizeof(unsigned short) * 3 * num_cells, cudaMemcpyHostToDevice));
+	cudaCheckCall(cudaMemcpyAsync(random_seqs_d, random_seqs, sizeof(unsigned short) * 3 * num_cells, cudaMemcpyHostToDevice, alt));
 
 	int num_cells_alive = num_cells;
 
@@ -947,7 +951,7 @@ int main(int argc, char *argv[]) {
 				food_to_place[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
 			}
 		}
-		cudaCheckCall(cudaMemcpy(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)max_new_sources, cudaMemcpyHostToDevice));
+		cudaCheckCall(cudaMemcpyAsync(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)max_new_sources, cudaMemcpyHostToDevice, alt));
 
 		/* Steps of the simulation */
 		cudaCheckKernel((placeFood<<<BLOCK_F, THREADS>>>(food_to_place_d, max_new_sources)));
@@ -956,14 +960,17 @@ int main(int argc, char *argv[]) {
 		cudaCheckKernel((step3<<<2*BLOCK_C, THREADS>>>()));
 		cudaCheckKernel((step4<<<BLOCK_P, THREADS, sizeof(int) * THREADS>>>()));
 
-		/* Recover statistics */
-		Statistics prev_stats = sim_stat;		
-		cudaCheckCall((cudaMemcpy(&sim_stat, stats_d, sizeof(Statistics), cudaMemcpyDeviceToHost)));
 
-		/* Recalculate number of cells alive */
-		if (iter > 0)
-			num_cells_alive += (sim_stat.history_total_cells - prev_stats.history_total_cells) - (sim_stat.history_dead_cells - prev_stats.history_dead_cells);
+		/* Recover statistics */		
+		if (sim_stat.history_max_food <= max_food_int && num_cells_alive > 0)
+		{
+			Statistics prev_stats = sim_stat;		
+			cudaCheckCall((cudaMemcpyAsync(&sim_stat, stats_d, sizeof(Statistics), cudaMemcpyDeviceToHost, alt)));
 
+			/* Recalculate number of cells alive */
+			if (iter > 0)	// Needed because prev_stats is all zeroes initialy.
+				num_cells_alive += (sim_stat.history_total_cells - prev_stats.history_total_cells) - (sim_stat.history_dead_cells - prev_stats.history_dead_cells);
+		}
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
 		//print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
