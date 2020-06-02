@@ -290,8 +290,9 @@ __global__ void initCells(unsigned short *random_seqs_d)
 
 	Cell *my_cell = &cells[gid];
 
-	for (int j = 0; j < 3; j++)
-		my_cell->random_seq[j] = random_seqs_d[3*gid + j];
+	my_cell->random_seq[0] = random_seqs_d[3*gid];
+	my_cell->random_seq[1] = random_seqs_d[3*gid + 1];
+	my_cell->random_seq[2] = random_seqs_d[3*gid + 2];
 
 	my_cell->alive = true;
 	// Initial age: Between 1 and 20 
@@ -309,7 +310,7 @@ __global__ void initCells(unsigned short *random_seqs_d)
 	my_cell->choose_mov[1] = PRECISION - my_cell->choose_mov[0] - my_cell->choose_mov[2];
 }
 
-#ifndef DEBUG
+#ifdef DEBUG
 __device__ void print_statusGPU( int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat );
 #endif // DEBUG
 
@@ -373,7 +374,7 @@ __global__ void step1()
 			/* 4.3.4. Annotate that there is one more cell in this culture position */
 			short *pos = &accessMat( culture_cells, my_cell->pos_row / PRECISION, my_cell->pos_col / PRECISION );
 			int inc = 0x1;
-			if (((long) pos) % 4 != 0)
+			if (((long)pos) % 4 != 0)
 			{
 				pos -= 1;
 				inc = 0x10000;
@@ -561,7 +562,7 @@ __global__ void step4()
 	if (gid == 0)
 	{
 		/* In case someone wants to print the debug information for each iteration, this is the place. */
-		//print_statusGPU(rows, columns, culture, num_cells, cells, num_cells_alive, *sim_stat);
+		print_statusGPU(rows, columns, culture, num_cells, cells, num_cells_alive, *sim_stat);
 	}
 #endif // DEBUG
 }
@@ -569,14 +570,10 @@ __global__ void step4()
 #ifdef DEBUG
 /* 
  * Function: Print the current state of the simulation, with verbose information (exact storage and food).
- *  Reconfigured to work on the device threads.
+ *  Reconfigured to work on a device thread.
  */
 __device__ void print_statusGPU( int rows, int columns, int *culture, int num_cells, Cell *cells, int num_cells_alive, Statistics sim_stat ) {
-	/* 
-	 * You don't need to optimize this function, it is only for pretty printing and debugging purposes.
-	 * It is not compiled in the production versions of the program.
-	 * Thus, it is never used when measuring times in the leaderboard
-	 */
+
 	int i,j;
 
 	printf("+");
@@ -606,7 +603,6 @@ __device__ void print_statusGPU( int rows, int columns, int *culture, int num_ce
                 	printf("(%06d)", counter);
             else
                 printf(" %06d ", (accessMat(culture, i, j)));
-                //printf(" %c ", symbol);
         }
 		printf("|\n");
 	}
@@ -893,15 +889,18 @@ int main(int argc, char *argv[]) {
 	cudaCheckCall(cudaMalloc(&random_seqs_d, sizeof(unsigned short) * 3 * num_cells));
 
 	for (i = 0; i < num_cells; i++)
-		for (j = 0; j < 3; j++)
-			random_seqs[3*i + j] = cells[i].random_seq[j];
+	{
+		random_seqs[3*i] = cells[i].random_seq[0];
+		random_seqs[3*i + 1] = cells[i].random_seq[1];
+		random_seqs[3*i + 2] = cells[i].random_seq[2];
+	}
 
 	cudaCheckCall(cudaMemcpyAsync(random_seqs_d, random_seqs, sizeof(unsigned short) * 3 * num_cells, cudaMemcpyHostToDevice, alt));
 
 	int num_cells_alive = num_cells;
 
 	/* Device cell lists */
-	/* They are assigned 2GiB of memory each, so they never require to realloc. */
+	/* They are assigned 2GiB of memory each, so they are never required to realloc. */
 	Cell *cells_d1;
 	cudaCheckCall(cudaMalloc(&cells_d1, (size_t) (1l << 31)));
 	Cell *cells_d2;
@@ -931,7 +930,6 @@ int main(int argc, char *argv[]) {
 	cudaCheckCall(cudaMalloc(&food_to_place_d, sizeof(food_t) * (size_t)max_new_sources));
 
 	for( iter=0; iter<max_iter && sim_stat.history_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
-		/* Set the free position to the first position */
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
@@ -1142,7 +1140,7 @@ MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWNXXXKKKKKXXXNWWMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMNo. lNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMNo. lNMMMMMMMMMMMMMMMMWNK0O0KXWMMMMMMMMMWNXXXWMMMMMMMMMWXK000KNWMMMMMMMMMMWNK000KXWMMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMM0o:'  .:l0NxcoOkokNMMWXx:'......;llcdXMMWOc,..';xXMMMMW0d;......'clclONMMMXkc'......:dKWMMMMMMMMMMMMMMMMM
-MMMMMMMMMMMMMMMO;..   .,kX;  ...;0MNk,  'codoc'    '0MWk. .;:'  oWMMXl. .;lodo:.    cXMWO,  .codol,. .dNMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMO;..   .,kX;  ...;0MNk,  'cudax'    '0MWk. .;:'  oWMMXl. .;lodo:.    cXMWO,  .cudax,. .dNMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMWNKc  cKNWX;  .:OXWNd. .xXWMMMMNx'  '0MWx. 'xKkllOWMXc  ;ONMMMMWKl.  cXWk. .oXWMMMMNk,  lNMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMNo. lNMMX;  cXMMMK; .xWMMMMMMMWk. '0MMNd'...'lONMWk. ,KMMMMMMMMNl  cXX:  oWMMMMMMMWO. 'OMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMNo. lNMMX; .xWMMM0, .kWMMMMMMMWO. '0MMMWXkc;. .lXWx. ;XMMMMMMMMWl  cXX: .dWMMMMMMMMO' .OMMMMMMMMMMMMMMM
