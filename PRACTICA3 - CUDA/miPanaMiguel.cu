@@ -552,10 +552,10 @@ __global__ void step3()
 	if (gid < rows*columns)
 	{
 		if (culture_cells[gid] != 0) culture[gid] = 0;
+		else culture[gid] -= culture[gid] / 20;
 		/* 4.2. Prepare ancillary data structures */	
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
 		culture_cells[gid] = 0;
-		culture[gid] -= culture[gid] / 20;
 	}
 	reductionMax(culture, rows*columns, &sim_stat->history_max_food);
 
