@@ -859,7 +859,7 @@ int main(int argc, char *argv[]) {
  * Block and thread sizes for kernel executions.
  *
  */
-#define THREADS 1024
+#define THREADS 128
 #define BLOCK (max(rows*columns, num_cells_alive)/THREADS + 1)
 #define BLOCK_F (max3(rows*columns, num_cells_alive, max_new_sources)/THREADS + 1)	/* "Food kernels" */
 #define BLOCK_C (num_cells_alive)/ THREADS + 1	/* "Cell kernels" */
