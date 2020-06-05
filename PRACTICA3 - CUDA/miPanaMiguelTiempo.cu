@@ -1,4 +1,112 @@
 /*
+ * cuda_time:
+ *
+ * Simple macro functions to time executions of code sections
+ * in a CUDA program.
+ *
+ * The macro functions are ignored and no check is done
+ * if the macro DEVELOPMENT is not defined.
+ *
+ * (c) 2020, Manuel de Castro Caballero
+ * To be used in an assignment of the Parallel Computing Course,
+ * Computer Engineering degree, Universidad de Valladolid (Spain)
+ * Academic year 2019/2020
+ */
+float time3_1 = .0f;
+float time3_2 = .0f;
+float time4_1 = .0f;
+float time4_2 = .0f;
+float time4_3 = .0f;
+float time4_4 = .0f;
+float time4_5 = .0f;
+float time4_6 = .0f;
+float time4_7 = .0f;
+float time4_8 = .0f;
+float time4_9 = .0f;
+
+float sum_time4_1 = .0f;
+float sum_time4_2 = .0f;
+float sum_time4_3 = .0f;
+float sum_time4_4 = .0f;
+float sum_time4_5 = .0f;
+float sum_time4_6 = .0f;
+float sum_time4_7 = .0f;
+float sum_time4_8 = .0f;
+float sum_time4_9 = .0f;
+
+float max_time4_1 = .0f;
+float max_time4_2 = .0f;
+float max_time4_3 = .0f;
+float max_time4_4 = .0f;
+float max_time4_5 = .0f;
+float max_time4_6 = .0f;
+float max_time4_7 = .0f;
+float max_time4_8 = .0f;
+float max_time4_9 = .0f;
+
+cudaEvent_t start, stop;
+cudaError_t errSync;
+
+#define time_start() { \
+	cudaEventCreate(&start); \
+	cudaEventCreate(&stop); \
+	cudaEventRecord(start, NULL); \
+}
+
+#define time_end(timer) { \
+	errSync = cudaDeviceSynchronize(); \
+	if (errSync != cudaSuccess) printf("Synchronization error: %s\n", cudaGetErrorString(errSync)); \
+	cudaEventRecord(stop, NULL); \
+	cudaEventSynchronize(stop); \
+	cudaEventElapsedTime(&timer, start, stop); \
+}
+
+#define update_times() { \
+	sum_time4_1 += time4_1; \
+	sum_time4_2 += time4_2; \
+	sum_time4_3 += time4_3; \
+	sum_time4_4 += time4_4; \
+	sum_time4_5 += time4_5; \
+	sum_time4_6 += time4_6; \
+	sum_time4_7 += time4_7; \
+	sum_time4_8 += time4_8; \
+	sum_time4_9 += time4_9; \
+	max_time4_1 = max(max_time4_1, time4_1); \
+	max_time4_2 = max(max_time4_2, time4_2); \
+	max_time4_3 = max(max_time4_3, time4_3); \
+	max_time4_4 = max(max_time4_4, time4_4); \
+	max_time4_5 = max(max_time4_5, time4_5); \
+	max_time4_6 = max(max_time4_6, time4_6); \
+	max_time4_7 = max(max_time4_7, time4_7); \
+	max_time4_8 = max(max_time4_8, time4_8); \
+	max_time4_9 = max(max_time4_9, time4_9); \
+	time4_1 = .0f; \
+	time4_2 = .0f; \
+	time4_3 = .0f; \
+	time4_4 = .0f; \
+	time4_5 = .0f; \
+	time4_6 = .0f; \
+	time4_7 = .0f; \
+	time4_8 = .0f; \
+	time4_9 = .0f; \
+}
+
+#define print_times() { \
+	printf("Execution times for each subsection:\n"); \
+    printf("\t3.1 - %lf\n", time3_1); \
+    printf("\t3.2 - %lf\n", time3_2); \
+    printf("\t4.1 - %lf (max: %lf)\n", sum_time4_1, max_time4_1); \
+    printf("\t4.2 - %lf (max: %lf)\n", sum_time4_2, max_time4_2); \
+    printf("\t4.3 - %lf (max: %lf)\n", sum_time4_3, max_time4_3); \
+    printf("\t4.4 - %lf (max: %lf)\n", sum_time4_4, max_time4_4); \
+    printf("\t4.5 - %lf (max: %lf)\n", sum_time4_5, max_time4_5); \
+    printf("\t4.6 - %lf (max: %lf)\n", sum_time4_6, max_time4_6); \
+    printf("\t4.7 - %lf (max: %lf)\n", sum_time4_7, max_time4_7); \
+    printf("\t4.8 - %lf (max: %lf)\n", sum_time4_8, max_time4_8); \
+    printf("\t4.9 - %lf (max: %lf)\n", sum_time4_9, max_time4_9); \
+}
+
+/*
  * Simplified simulation of life evolution
  *
  * Computacion Paralela, Grado en Informatica (Universidad de Valladolid)
@@ -246,13 +354,13 @@ __device__ Statistics *sim_stat;
 __device__ int num_cells_alive = 0;
 __device__ int step_dead_cells = 0;
 __device__ int step_new_cells = 0;
-__device__ int *free_position = NULL;
+__device__ int free_position = 0;
 
 /*
  * Initialize global device variables.
  *
  */
-__global__ void initGPU(int *culture_d, short *culture_cells_d, int rows_d, int columns_d, Cell *cells_d1, Cell *cells_d2, int num_cells_d, Statistics *stats, int *free_position_d)
+__global__ void initGPU(int *culture_d, short *culture_cells_d, int rows_d, int columns_d, Cell *cells_d1, Cell *cells_d2, int num_cells_d, Statistics *stats)
 {
 	rows = rows_d;
 	columns = columns_d;
@@ -273,9 +381,6 @@ __global__ void initGPU(int *culture_d, short *culture_cells_d, int rows_d, int 
 	sim_stat->history_max_dead_cells = 0;
 	sim_stat->history_max_age = 0;
 	sim_stat->history_max_food = 0.0f;
-
-	free_position = free_position_d;
-	*free_position = 0;
 }
 
 /*
@@ -362,10 +467,10 @@ __global__ void step1()
 				}
 				// else do not change the direction
 				
-				/* 4.3.3. Update position moving in the choosen direction*/
+				/* 4.3.3. Update position moving in the chosen direction*/
 				my_cell->pos_row += my_cell->mov_row;
 				my_cell->pos_col += my_cell->mov_col;
-				// Periodic arena: Left/Rigth edges are connected, Top/Bottom edges are connected
+				// Periodic arena: Left/Right edges are connected, Top/Bottom edges are connected
 				if ( my_cell->pos_row < 0 ) my_cell->pos_row += rows * PRECISION;
 				if ( my_cell->pos_row >= rows * PRECISION) my_cell->pos_row -= rows * PRECISION;
 				if ( my_cell->pos_col < 0 ) my_cell->pos_col += columns * PRECISION;
@@ -401,7 +506,7 @@ __global__ void cleanCells()
 	{
 		Cell *my_cell = &cells[gid];
 		if ( my_cell->alive ) {
-			cells_aux[atomicAdd(free_position, 1)] = *my_cell;
+			cells_aux[atomicAdd(&free_position, 1)] = *my_cell;
 		}
 		if (gid == 0) num_cells_alive -= step_dead_cells;
 	}
@@ -513,7 +618,7 @@ __global__ void recount()
 		"mov.s32	%2,	0;"
 		: "=r"(step_dead_cells),
 		  "=r"(step_new_cells),
-		  "=r"(free_position[0])
+		  "=r"(free_position)
 	);
 	asm(
 		"mov.s32	%0, %1;"
@@ -869,6 +974,7 @@ int main(int argc, char *argv[]) {
 	culture_cells = NULL;
 
 	/* Device equivalents */
+	time_start();
 	int *culture_d;
 	short *culture_cells_d;
 	cudaCheckCall(cudaMalloc(&culture_d, sizeof(int) * (size_t)rows * (size_t)columns));
@@ -896,7 +1002,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	cudaCheckCall(cudaMemcpyAsync(random_seqs_d, random_seqs, sizeof(unsigned short) * 3 * num_cells, cudaMemcpyHostToDevice, alt));
+	time_end(time3_1);
 
+	time_start();
 	int num_cells_alive = num_cells;
 
 	/* Device cell lists */
@@ -908,13 +1016,11 @@ int main(int argc, char *argv[]) {
 	/* Device statistics */
 	Statistics *stats_d;
 	cudaCheckCall(cudaMalloc(&stats_d, sizeof(Statistics)));
-	/* Device auxiliary free_position for cell_list */
-	int *free_position;
-	cudaCheckCall(cudaMalloc(&free_position, sizeof(int)));
 
 	/* Device intialization */
 	initGPU<<<1, 1>>>(culture_d, culture_cells_d, rows, columns, cells_d1, cells_d2, num_cells, stats_d, free_position);
 	initCells<<<BLOCK_C, THREADS>>>(random_seqs_d);
+	time_end(time3_2);
 
 	/* 4. Simulation */
 	int iter;
@@ -929,37 +1035,19 @@ int main(int argc, char *argv[]) {
 	food_t *food_to_place_d;
 	cudaCheckCall(cudaMalloc(&food_to_place_d, sizeof(food_t) * (size_t)max_new_sources));
 
-	/* Food for first iteration. */
-	for (i=0; i<num_new_sources; i++) {
-		food_to_place[i].pos = int_urand48( rows, food_random_seq )*columns;
-		food_to_place[i].pos += int_urand48( columns, food_random_seq );
-		food_to_place[i].food = int_urand48( food_level * PRECISION, food_random_seq );
-	}
-	// In the special food spot
-	if ( food_spot_active ) {
-		for (; i<max_new_sources; i++) {
-			food_to_place[i].pos = (food_spot_row + int_urand48( food_spot_size_rows, food_spot_random_seq ))*columns;
-			food_to_place[i].pos += food_spot_col + int_urand48( food_spot_size_cols, food_spot_random_seq );
-			food_to_place[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
-		}
-	}
-
 	for( iter=0; iter<max_iter && sim_stat.history_max_food <= max_food_int && num_cells_alive > 0; iter++ ) {
-
-		cudaCheckKernel((step1<<<BLOCK_C, THREADS, sizeof(int) * THREADS>>>()));
-		cudaCheckKernel((cleanCells<<<BLOCK_C, THREADS>>>()));
-
-		cudaCheckCall(cudaMemcpy(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)max_new_sources, cudaMemcpyHostToDevice));
-
-		/* Steps of the simulation */
-		cudaCheckKernel((placeFood<<<BLOCK_F, THREADS>>>(food_to_place_d, max_new_sources)));
-		cudaCheckKernel((step2<<<BLOCK_F, THREADS>>>()));
-		cudaCheckKernel((recount<<<1, 1>>>()));
-		cudaCheckKernel((step3<<<2*BLOCK_C, THREADS>>>()));
-		cudaCheckKernel((step4<<<BLOCK_P, THREADS, sizeof(int) * THREADS>>>()));
+		update_times();
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
+		time_start();
+		cudaCheckKernel((step1<<<BLOCK_C, THREADS, sizeof(int) * THREADS>>>()));
+		time_end(time4_3);
+		time_start();
+		cudaCheckKernel((cleanCells<<<BLOCK_C, THREADS>>>()));
+		time_end(time4_6);
+
+		time_start();
 		for (i=0; i<num_new_sources; i++) {
 			food_to_place[i].pos = int_urand48( rows, food_random_seq )*columns;
 			food_to_place[i].pos += int_urand48( columns, food_random_seq );
@@ -973,20 +1061,46 @@ int main(int argc, char *argv[]) {
 				food_to_place[i].food = int_urand48( food_spot_level * PRECISION, food_spot_random_seq );
 			}
 		}
+		cudaCheckCall(cudaMemcpyAsync(food_to_place_d, food_to_place, sizeof(food_t) * (size_t)max_new_sources, cudaMemcpyHostToDevice, alt));
 
-		Statistics prev_stats = sim_stat;		
-		cudaCheckCall((cudaMemcpyAsync(&sim_stat, stats_d, sizeof(Statistics), cudaMemcpyDeviceToHost, alt)));
+		/* Steps of the simulation */
 
-		/* Recalculate number of cells alive */
-		if (iter > 0)	// Needed because prev_stats is all zeroes initialy.
-			num_cells_alive += (sim_stat.history_total_cells - prev_stats.history_total_cells) - (sim_stat.history_dead_cells - prev_stats.history_dead_cells);
+		cudaCheckKernel((placeFood<<<BLOCK_F, THREADS>>>(food_to_place_d, max_new_sources)));
+		time_end(time4_1);
+		time_start();
+		cudaCheckKernel((step2<<<BLOCK_F, THREADS>>>()));
+		time_end(time4_4);
+		time_start();
+		cudaCheckKernel((recount<<<1, 1>>>()));
+		time_end(time4_9);
+		time_start();
+		cudaCheckKernel((step3<<<2*BLOCK_C, THREADS>>>()));
+		time_end(time4_5);
+		time_start();
+		cudaCheckKernel((step4<<<BLOCK_P, THREADS, sizeof(int) * THREADS>>>()));
+		time_end(time4_8);
+
+
+		/* Recover statistics */		
+		if (sim_stat.history_max_food <= max_food_int && num_cells_alive > 0)
+		{
+			Statistics prev_stats = sim_stat;		
+			cudaCheckCall((cudaMemcpyAsync(&sim_stat, stats_d, sizeof(Statistics), cudaMemcpyDeviceToHost, alt)));
+
+			/* Recalculate number of cells alive */
+			if (iter > 0)	// Needed because prev_stats is all zeroes initialy.
+				num_cells_alive += (sim_stat.history_total_cells - prev_stats.history_total_cells) - (sim_stat.history_dead_cells - prev_stats.history_dead_cells);
+		}
 #ifdef DEBUG
 		/* 4.10. DEBUG: Print the current state of the simulation at the end of each iteration */
 		//print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
 	}
 
+	print_times();
+
 /* And here goes the ASCII art :D
+
 OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO;                                                                                        
 OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOk;                                                                                        
 OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOk;                                                                                        
@@ -1108,7 +1222,12 @@ OOOOOOOOOOOOOOOOOOOOOXMMMo                                                      
                      cKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKl                   
                       ........................................................................................................................................................................................................................................................................................................................................................................................................................                    
                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+
+
+
+
                                                    Special thanks to:
+
 MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMWWWWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWNNNNNWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWWWWWWMMMMMMMMMMMMM
@@ -1155,6 +1274,7 @@ MMMMMMMMMMMMMMMMMNd..oNMMX: 'kWMMMMMNOl'. ..  ..,. ,0MWk;......:OWMMNO:......   
 MMMMMMMMMMMMMMMMMWXOOXWMMWKkONMMMMMMMMWX0kdddxOXX0k0NMMMWKOOO0XWMMMMKc...,;;;,..  'kNMMMMMWN0kxddkOXWMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWKd,.  ..  .,oKWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
 MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMN0kdoodk0NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+
 sgd: HylianPablo & Bolu. */
 
 /*

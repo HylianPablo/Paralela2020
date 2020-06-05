@@ -491,6 +491,7 @@ int main(int argc, char *argv[]) {
 			exit( EXIT_FAILURE );
 		}
 
+
 		/* 4.3. Cell movements */
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
